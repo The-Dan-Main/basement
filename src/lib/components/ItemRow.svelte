@@ -1,4 +1,6 @@
 <script lang="ts">
+	import CategorySelect from '$lib/components/CategorySelect.svelte';
+	import { categoryLabel } from '$lib/categories';
 	import { getI18n } from '$lib/i18n/i18n.svelte';
 	import { fill } from '$lib/i18n/locales';
 	import { fieldClass } from '$lib/ui';
@@ -6,14 +8,18 @@
 
 	let {
 		item,
+		addedBy,
+		checkedBy,
 		ontoggle,
 		ondelete,
 		onsave
 	}: {
 		item: ListItem;
+		addedBy: string;
+		checkedBy: string;
 		ontoggle: () => void;
 		ondelete: () => void;
-		onsave: (patch: { name: string; quantity: string; note: string }) => void;
+		onsave: (patch: { name: string; quantity: string; note: string; category: string }) => void;
 	} = $props();
 
 	const i18n = getI18n();
@@ -22,18 +28,25 @@
 	let name = $state('');
 	let quantity = $state('');
 	let note = $state('');
+	let category = $state('');
 
 	function startEdit() {
 		name = item.name;
 		quantity = item.quantity;
 		note = item.note;
+		category = item.category ?? '';
 		editing = true;
 	}
 
 	function save() {
 		const trimmed = name.trim();
 		if (!trimmed) return;
-		onsave({ name: trimmed, quantity: quantity.trim(), note: note.trim() });
+		onsave({
+			name: trimmed,
+			quantity: quantity.trim(),
+			note: note.trim(),
+			category
+		});
 		editing = false;
 	}
 </script>
@@ -74,6 +87,7 @@
 						<input class={fieldClass} bind:value={quantity} placeholder={t.items.qty} />
 						<input class={fieldClass} bind:value={note} placeholder={t.items.note} />
 					</div>
+					<CategorySelect bind:value={category} />
 					<div class="flex gap-2">
 						<button class="text-sm font-semibold text-gold" type="button" onclick={save}
 							>{t.items.save}</button
@@ -87,9 +101,25 @@
 				<p class={['text-lg font-semibold', item.checked && 'text-fog line-through']}>
 					{item.name}
 				</p>
-				{#if item.quantity || item.note}
+				{#if item.quantity || item.note || item.category}
 					<p class="mt-1 text-sm text-fog">
-						{[item.quantity, item.note].filter(Boolean).join(' · ')}
+						{[
+							item.quantity,
+							item.note,
+							item.category ? categoryLabel(t.categories, item.category) : ''
+						]
+							.filter(Boolean)
+							.join(' · ')}
+					</p>
+				{/if}
+				{#if addedBy || (item.checked && checkedBy)}
+					<p class="mt-1 text-xs text-fog/80">
+						{[
+							addedBy ? fill(t.list.addedBy, { name: addedBy }) : '',
+							item.checked && checkedBy ? fill(t.list.checkedBy, { name: checkedBy }) : ''
+						]
+							.filter(Boolean)
+							.join(' · ')}
 					</p>
 				{/if}
 				<div class="mt-3 flex gap-3 text-sm">

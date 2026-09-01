@@ -21,6 +21,7 @@ export type ListSummary = {
 	household_id: string;
 	household_name: string;
 	name: string;
+	emoji: string;
 	unchecked: number;
 	total: number;
 	updated_at: string;

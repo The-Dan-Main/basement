@@ -38,6 +38,7 @@ export type ListRow = {
 	id: string;
 	household_id: string;
 	name: string;
+	emoji: string;
 	sort_order: number;
 	archived_at: string | null;
 	created_by: string;
@@ -51,8 +52,10 @@ export type ListItemRow = {
 	name: string;
 	quantity: string;
 	note: string;
+	category: string;
 	checked: boolean;
 	checked_at: string | null;
+	checked_by: string | null;
 	sort_order: number;
 	created_by: string;
 	created_at: string;
@@ -64,6 +67,7 @@ export type ItemCatalogRow = {
 	household_id: string;
 	name: string;
 	display_name: string;
+	category: string;
 	use_count: number;
 	last_used_at: string;
 	created_at: string;
@@ -114,6 +118,7 @@ export interface Database {
 					name: string;
 					created_by: string;
 					id?: string;
+					emoji?: string;
 					sort_order?: number;
 					archived_at?: string | null;
 					created_at?: string;
@@ -130,8 +135,10 @@ export interface Database {
 					id?: string;
 					quantity?: string;
 					note?: string;
+					category?: string;
 					checked?: boolean;
 					checked_at?: string | null;
+					checked_by?: string | null;
 					sort_order?: number;
 					created_at?: string;
 					updated_at?: string;
@@ -145,6 +152,7 @@ export interface Database {
 					name: string;
 					display_name: string;
 					id?: string;
+					category?: string;
 					use_count?: number;
 					last_used_at?: string;
 					created_at?: string;

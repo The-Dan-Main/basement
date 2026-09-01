@@ -33,8 +33,15 @@ export type OutboxPayload =
 	| { kind: 'listDelete'; listId: string }
 	| { kind: 'itemAdd'; item: ListItem; catalog: ItemCatalog | null }
 	| { kind: 'itemUpdate'; itemId: string; patch: Partial<ListItem> }
-	| { kind: 'itemToggle'; itemId: string; checked: boolean; checked_at: string | null }
+	| {
+			kind: 'itemToggle';
+			itemId: string;
+			checked: boolean;
+			checked_at: string | null;
+			checked_by: string | null;
+	  }
 	| { kind: 'itemDelete'; itemId: string }
+	| { kind: 'itemsDelete'; itemIds: string[] }
 	| { kind: 'householdUpdate'; householdId: string; patch: Partial<Household> };
 
 const SNAP_KEY = 'snapshot';
@@ -53,12 +60,25 @@ export function emptySnapshot(userId: string, profile: Profile): OfflineSnapshot
 	};
 }
 
+function hydrateSnapshot(snap: OfflineSnapshot): OfflineSnapshot {
+	return {
+		...snap,
+		lists: snap.lists.map((list) => ({ ...list, emoji: list.emoji ?? '' })),
+		items: snap.items.map((item) => ({
+			...item,
+			category: item.category ?? '',
+			checked_by: item.checked_by ?? null
+		})),
+		catalog: snap.catalog.map((row) => ({ ...row, category: row.category ?? '' }))
+	};
+}
+
 export async function readSnapshot(userId?: string): Promise<OfflineSnapshot | null> {
 	if (!browser) return null;
 	const snap = await kvGet<OfflineSnapshot>(SNAP_KEY);
 	if (!snap) return null;
 	if (userId && snap.userId !== userId) return null;
-	return snap;
+	return hydrateSnapshot(snap);
 }
 
 export async function writeSnapshot(snap: OfflineSnapshot): Promise<void> {
@@ -107,6 +127,9 @@ export function pendingItemIds(payloads: OutboxPayload[]) {
 		) {
 			ids.add(payload.itemId);
 		}
+		if (payload.kind === 'itemsDelete') {
+			for (const id of payload.itemIds) ids.add(id);
+		}
 	}
 	return ids;
 }
@@ -152,12 +175,20 @@ function applyOutbox(snap: OfflineSnapshot, payloads: OutboxPayload[]): OfflineS
 				...next,
 				items: next.items.map((item) =>
 					item.id === payload.itemId
-						? { ...item, checked: payload.checked, checked_at: payload.checked_at }
+						? {
+								...item,
+								checked: payload.checked,
+								checked_at: payload.checked_at,
+								checked_by: payload.checked_by
+							}
 						: item
 				)
 			};
 		} else if (payload.kind === 'itemDelete') {
 			next = { ...next, items: next.items.filter((item) => item.id !== payload.itemId) };
+		} else if (payload.kind === 'itemsDelete') {
+			const removed = new Set(payload.itemIds);
+			next = { ...next, items: next.items.filter((item) => !removed.has(item.id)) };
 		} else if (payload.kind === 'householdUpdate') {
 			next = {
 				...next,
@@ -244,7 +275,7 @@ export async function pullSnapshot(
 		display_name: names.get(row.user_id) ?? 'Shopper'
 	}));
 
-	const next: OfflineSnapshot = {
+	const next: OfflineSnapshot = hydrateSnapshot({
 		userId,
 		savedAt: nowIso(),
 		profile: {
@@ -263,7 +294,7 @@ export async function pullSnapshot(
 		lists,
 		items,
 		catalog
-	};
+	});
 	const merged = await snapshotWithOutbox(next);
 	publishProfile(merged.profile);
 	await writeSnapshot(merged);
@@ -281,39 +312,78 @@ async function pushOrQueue(supabase: BasementClient, payload: OutboxPayload) {
 	await refreshPending();
 }
 
+function missingColumn(error: { message?: string } | null, column: string) {
+	const message = error?.message ?? '';
+	return message.includes(`'${column}'`) || message.includes(`"${column}"`);
+}
+
+async function writeRow<T extends Record<string, unknown>>(
+	run: (row: T) => PromiseLike<{ error: { message: string } | null }>,
+	row: T,
+	optional: (keyof T)[]
+) {
+	let current = { ...row };
+	for (let attempt = 0; attempt <= optional.length; attempt++) {
+		const { error } = await run(current);
+		if (!error) return;
+		const drop = optional.find((key) => missingColumn(error, String(key)));
+		if (!drop) throw error;
+		const next = { ...current };
+		delete next[drop];
+		current = next;
+	}
+}
+
 async function pushPayload(supabase: BasementClient, payload: OutboxPayload) {
 	if (payload.kind === 'listCreate') {
-		const { error } = await supabase.from('lists').insert(payload.list);
-		if (error) throw error;
+		await writeRow((row) => supabase.from('lists').insert(row), payload.list, ['emoji']);
 	} else if (payload.kind === 'listUpdate') {
-		const { error } = await supabase.from('lists').update(payload.patch).eq('id', payload.listId);
-		if (error) throw error;
+		await writeRow(
+			(row) => supabase.from('lists').update(row).eq('id', payload.listId),
+			payload.patch,
+			['emoji']
+		);
 	} else if (payload.kind === 'listDelete') {
 		const { error } = await supabase.from('lists').delete().eq('id', payload.listId);
 		if (error) throw error;
 	} else if (payload.kind === 'itemAdd') {
-		const itemResult = await supabase.from('list_items').insert(payload.item);
-		if (itemResult.error) throw itemResult.error;
+		await writeRow(
+			(row) => supabase.from('list_items').insert(row),
+			payload.item,
+			['category', 'checked_by']
+		);
 		if (payload.catalog) {
-			const catalogResult = await supabase.from('item_catalog').upsert(payload.catalog, {
-				onConflict: 'household_id,name'
-			});
-			if (catalogResult.error) throw catalogResult.error;
+			await writeRow(
+				(row) =>
+					supabase.from('item_catalog').upsert(row, {
+						onConflict: 'household_id,name'
+					}),
+				payload.catalog,
+				['category']
+			);
 		}
 	} else if (payload.kind === 'itemUpdate') {
-		const { error } = await supabase
-			.from('list_items')
-			.update(payload.patch)
-			.eq('id', payload.itemId);
-		if (error) throw error;
+		await writeRow(
+			(row) => supabase.from('list_items').update(row).eq('id', payload.itemId),
+			payload.patch,
+			['category', 'checked_by']
+		);
 	} else if (payload.kind === 'itemToggle') {
-		const { error } = await supabase
-			.from('list_items')
-			.update({ checked: payload.checked, checked_at: payload.checked_at })
-			.eq('id', payload.itemId);
-		if (error) throw error;
+		await writeRow(
+			(row) => supabase.from('list_items').update(row).eq('id', payload.itemId),
+			{
+				checked: payload.checked,
+				checked_at: payload.checked_at,
+				checked_by: payload.checked_by
+			},
+			['checked_by']
+		);
 	} else if (payload.kind === 'itemDelete') {
 		const { error } = await supabase.from('list_items').delete().eq('id', payload.itemId);
+		if (error) throw error;
+	} else if (payload.kind === 'itemsDelete') {
+		if (payload.itemIds.length === 0) return;
+		const { error } = await supabase.from('list_items').delete().in('id', payload.itemIds);
 		if (error) throw error;
 	} else if (payload.kind === 'householdUpdate') {
 		const { error } = await supabase
@@ -412,7 +482,7 @@ export async function persistItemAdd(
 ) {
 	let catalogRow: ItemCatalog | null = null;
 	await mutateSnapshot(userId, (snap) => {
-		const catalog = bumpCatalog(snap.catalog, householdId, item.name);
+		const catalog = bumpCatalog(snap.catalog, householdId, item.name, nowIso(), item.category);
 		catalogRow =
 			catalog.find(
 				(row) => row.household_id === householdId && row.name === normalizeItemName(item.name)
@@ -447,13 +517,14 @@ export async function persistItemToggle(
 	checked: boolean
 ) {
 	const checked_at = checked ? nowIso() : null;
+	const checked_by = checked ? userId : null;
 	await mutateSnapshot(userId, (snap) => ({
 		...snap,
 		items: snap.items.map((item) =>
-			item.id === itemId ? { ...item, checked, checked_at, updated_at: nowIso() } : item
+			item.id === itemId ? { ...item, checked, checked_at, checked_by, updated_at: nowIso() } : item
 		)
 	}));
-	await pushOrQueue(supabase, { kind: 'itemToggle', itemId, checked, checked_at });
+	await pushOrQueue(supabase, { kind: 'itemToggle', itemId, checked, checked_at, checked_by });
 }
 
 export async function persistItemDelete(supabase: BasementClient, userId: string, itemId: string) {
@@ -462,6 +533,20 @@ export async function persistItemDelete(supabase: BasementClient, userId: string
 		items: snap.items.filter((item) => item.id !== itemId)
 	}));
 	await pushOrQueue(supabase, { kind: 'itemDelete', itemId });
+}
+
+export async function persistItemsDelete(
+	supabase: BasementClient,
+	userId: string,
+	itemIds: string[]
+) {
+	if (itemIds.length === 0) return;
+	const removed = new Set(itemIds);
+	await mutateSnapshot(userId, (snap) => ({
+		...snap,
+		items: snap.items.filter((item) => !removed.has(item.id))
+	}));
+	await pushOrQueue(supabase, { kind: 'itemsDelete', itemIds });
 }
 
 export async function persistHouseholdUpdate(
@@ -529,6 +614,7 @@ export function listSummaries(snap: OfflineSnapshot) {
 				household_id: list.household_id,
 				household_name: households.get(list.household_id) ?? 'Household',
 				name: list.name,
+				emoji: list.emoji ?? '',
 				unchecked: items.filter((item) => !item.checked).length,
 				total: items.length,
 				updated_at: list.updated_at
@@ -545,5 +631,21 @@ export function itemsForList(snap: OfflineSnapshot, listId: string) {
 	const checked = items
 		.filter((item) => item.checked)
 		.sort((a, b) => (b.checked_at ?? '').localeCompare(a.checked_at ?? ''));
-	return { unchecked, checked };
+	return { items, unchecked, checked };
+}
+
+export function memberName(snap: OfflineSnapshot, userId: string | null | undefined) {
+	if (!userId) return '';
+	return snap.members.find((member) => member.user_id === userId)?.display_name ?? '';
+}
+
+export function matchesQuery(item: ListItem, query: string) {
+	const q = query.trim().toLowerCase();
+	if (!q) return true;
+	return (
+		item.name.toLowerCase().includes(q) ||
+		item.note.toLowerCase().includes(q) ||
+		item.quantity.toLowerCase().includes(q) ||
+		item.category.toLowerCase().includes(q)
+	);
 }
