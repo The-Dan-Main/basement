@@ -1,3 +1,5 @@
+import type { Recipe as RecipeRow } from '$lib/types/database.types';
+
 export type {
 	Household,
 	HouseholdInvite,
@@ -5,8 +7,12 @@ export type {
 	ItemCatalog,
 	ListItem,
 	Profile,
+	RecipeIngredient,
+	RecipeStep,
 	ShoppingList
 } from '$lib/types/database.types';
+
+export type Recipe = RecipeRow & { image_url?: string };
 
 export type Member = {
 	household_id: string;

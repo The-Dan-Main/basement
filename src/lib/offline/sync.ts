@@ -4,7 +4,15 @@ import { fetchAllRows, nowIso } from '$lib/data';
 import { kvGet, kvSet, outboxAdd, outboxAll, outboxCount, outboxDelete } from '$lib/offline/db';
 import { publishProfile, publishSnapshot } from '$lib/offline/live.svelte';
 import { isOnline, setOfflineStatus } from '$lib/offline/status';
-import type { OrderPatch } from '$lib/sort';
+import { signRecipeImageUrls } from '$lib/recipe-images';
+import {
+	hydrateIngredient,
+	hydrateRecipe,
+	planRecipeListAdds,
+	toRecipeRow,
+	type ListAddInput
+} from '$lib/recipes';
+import { nextFrontSortOrder, type OrderPatch } from '$lib/sort';
 import type { BasementClient } from '$lib/supabase/client';
 import type {
 	Household,
@@ -13,6 +21,9 @@ import type {
 	ListItem,
 	Member,
 	Profile,
+	Recipe,
+	RecipeIngredient,
+	RecipeStep,
 	ShoppingList
 } from '$lib/types/app';
 
@@ -26,6 +37,9 @@ export type OfflineSnapshot = {
 	lists: ShoppingList[];
 	items: ListItem[];
 	catalog: ItemCatalog[];
+	recipes: Recipe[];
+	recipeIngredients: RecipeIngredient[];
+	recipeSteps: RecipeStep[];
 };
 
 export type OutboxPayload =
@@ -45,7 +59,9 @@ export type OutboxPayload =
 	| { kind: 'itemsDelete'; itemIds: string[] }
 	| { kind: 'listsReorder'; updates: OrderPatch[]; updated_at: string }
 	| { kind: 'itemsReorder'; updates: OrderPatch[]; updated_at: string }
-	| { kind: 'householdUpdate'; householdId: string; patch: Partial<Household> };
+	| { kind: 'householdUpdate'; householdId: string; patch: Partial<Household> }
+	| { kind: 'recipeUpsert'; recipe: Recipe; ingredients: RecipeIngredient[]; steps: RecipeStep[] }
+	| { kind: 'recipeDelete'; recipeId: string; imagePath?: string };
 
 const SNAP_KEY = 'snapshot';
 
@@ -59,7 +75,10 @@ export function emptySnapshot(userId: string, profile: Profile): OfflineSnapshot
 		invites: [],
 		lists: [],
 		items: [],
-		catalog: []
+		catalog: [],
+		recipes: [],
+		recipeIngredients: [],
+		recipeSteps: []
 	};
 }
 
@@ -72,7 +91,10 @@ function hydrateSnapshot(snap: OfflineSnapshot): OfflineSnapshot {
 			category: item.category ?? '',
 			checked_by: item.checked_by ?? null
 		})),
-		catalog: snap.catalog.map((row) => ({ ...row, category: row.category ?? '' }))
+		catalog: snap.catalog.map((row) => ({ ...row, category: row.category ?? '' })),
+		recipes: (snap.recipes ?? []).map(hydrateRecipe),
+		recipeIngredients: (snap.recipeIngredients ?? []).map(hydrateIngredient),
+		recipeSteps: snap.recipeSteps ?? []
 	};
 }
 
@@ -206,9 +228,39 @@ function applyOutbox(snap: OfflineSnapshot, payloads: OutboxPayload[]): OfflineS
 					household.id === payload.householdId ? { ...household, ...payload.patch } : household
 				)
 			};
+		} else if (payload.kind === 'recipeUpsert') {
+			next = applyRecipeBundle(next, payload.recipe, payload.ingredients, payload.steps);
+		} else if (payload.kind === 'recipeDelete') {
+			next = removeRecipeFromSnap(next, payload.recipeId);
 		}
 	}
 	return next;
+}
+
+function applyRecipeBundle(
+	snap: OfflineSnapshot,
+	recipe: Recipe,
+	ingredients: RecipeIngredient[],
+	steps: RecipeStep[]
+): OfflineSnapshot {
+	return {
+		...snap,
+		recipes: [recipe, ...snap.recipes.filter((row) => row.id !== recipe.id)],
+		recipeIngredients: [
+			...ingredients,
+			...snap.recipeIngredients.filter((row) => row.recipe_id !== recipe.id)
+		],
+		recipeSteps: [...steps, ...snap.recipeSteps.filter((row) => row.recipe_id !== recipe.id)]
+	};
+}
+
+function removeRecipeFromSnap(snap: OfflineSnapshot, recipeId: string): OfflineSnapshot {
+	return {
+		...snap,
+		recipes: snap.recipes.filter((row) => row.id !== recipeId),
+		recipeIngredients: snap.recipeIngredients.filter((row) => row.recipe_id !== recipeId),
+		recipeSteps: snap.recipeSteps.filter((row) => row.recipe_id !== recipeId)
+	};
 }
 
 function applyOrderPatches(
@@ -256,59 +308,92 @@ export async function pullSnapshot(
 	userId: string,
 	profile?: Profile
 ): Promise<OfflineSnapshot> {
-	const [households, memberRows, profileRows, invites, lists, items, catalog, profileRow] =
-		await Promise.all([
-			fetchAllRows<Household>((from, to) =>
-				supabase
-					.from('households')
-					.select('*')
-					.order('created_at', { ascending: true })
-					.range(from, to)
-			),
-			fetchAllRows<{
-				household_id: string;
-				user_id: string;
-				role: Member['role'];
-				created_at: string;
-			}>((from, to) =>
-				supabase
-					.from('household_members')
-					.select('household_id, user_id, role, created_at')
-					.range(from, to)
-			),
-			fetchAllRows<Profile>((from, to) => supabase.from('profiles').select('*').range(from, to)),
-			fetchAllRows<HouseholdInvite>((from, to) =>
-				supabase
-					.from('household_invites')
-					.select('*')
-					.is('accepted_at', null)
-					.order('created_at', { ascending: false })
-					.range(from, to)
-			),
-			fetchAllRows<ShoppingList>((from, to) =>
-				supabase
-					.from('lists')
-					.select('*')
-					.is('archived_at', null)
-					.order('sort_order', { ascending: true })
-					.range(from, to)
-			),
-			fetchAllRows<ListItem>((from, to) =>
-				supabase
-					.from('list_items')
-					.select('*')
-					.order('sort_order', { ascending: true })
-					.range(from, to)
-			),
-			fetchAllRows<ItemCatalog>((from, to) =>
-				supabase
-					.from('item_catalog')
-					.select('*')
-					.order('use_count', { ascending: false })
-					.range(from, to)
-			),
-			supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
-		]);
+	const [
+		households,
+		memberRows,
+		profileRows,
+		invites,
+		lists,
+		items,
+		catalog,
+		recipes,
+		recipeIngredients,
+		recipeSteps,
+		profileRow
+	] = await Promise.all([
+		fetchAllRows<Household>((from, to) =>
+			supabase
+				.from('households')
+				.select('*')
+				.order('created_at', { ascending: true })
+				.range(from, to)
+		),
+		fetchAllRows<{
+			household_id: string;
+			user_id: string;
+			role: Member['role'];
+			created_at: string;
+		}>((from, to) =>
+			supabase
+				.from('household_members')
+				.select('household_id, user_id, role, created_at')
+				.range(from, to)
+		),
+		fetchAllRows<Profile>((from, to) => supabase.from('profiles').select('*').range(from, to)),
+		fetchAllRows<HouseholdInvite>((from, to) =>
+			supabase
+				.from('household_invites')
+				.select('*')
+				.is('accepted_at', null)
+				.order('created_at', { ascending: false })
+				.range(from, to)
+		),
+		fetchAllRows<ShoppingList>((from, to) =>
+			supabase
+				.from('lists')
+				.select('*')
+				.is('archived_at', null)
+				.order('sort_order', { ascending: true })
+				.range(from, to)
+		),
+		fetchAllRows<ListItem>((from, to) =>
+			supabase
+				.from('list_items')
+				.select('*')
+				.order('sort_order', { ascending: true })
+				.range(from, to)
+		),
+		fetchAllRows<ItemCatalog>((from, to) =>
+			supabase
+				.from('item_catalog')
+				.select('*')
+				.order('use_count', { ascending: false })
+				.range(from, to)
+		),
+		fetchAllRows<Recipe>((from, to) =>
+			supabase.from('recipes').select('*').order('updated_at', { ascending: false }).range(from, to)
+		),
+		fetchAllRows<RecipeIngredient>((from, to) =>
+			supabase
+				.from('recipe_ingredients')
+				.select('*')
+				.order('sort_order', { ascending: true })
+				.range(from, to)
+		),
+		fetchAllRows<RecipeStep>((from, to) =>
+			supabase
+				.from('recipe_steps')
+				.select('*')
+				.order('sort_order', { ascending: true })
+				.range(from, to)
+		),
+		supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
+	]);
+
+	const imageUrls = await signRecipeImageUrls(
+		supabase,
+		recipes.map((row) => row.image_path)
+	);
 
 	const names = new Map(profileRows.map((row) => [row.id, row.display_name]));
 	const members: Member[] = memberRows.map((row) => ({
@@ -334,7 +419,10 @@ export async function pullSnapshot(
 		invites,
 		lists,
 		items,
-		catalog
+		catalog,
+		recipes: recipes.map((row) => ({ ...row, image_url: imageUrls.get(row.image_path) ?? '' })),
+		recipeIngredients,
+		recipeSteps
 	});
 	const merged = await snapshotWithOutbox(next);
 	publishProfile(merged.profile);
@@ -435,6 +523,35 @@ async function pushPayload(supabase: BasementClient, payload: OutboxPayload) {
 			.update(payload.patch)
 			.eq('id', payload.householdId);
 		if (error) throw error;
+	} else if (payload.kind === 'recipeUpsert') {
+		const { error: recipeError } = await supabase
+			.from('recipes')
+			.upsert(toRecipeRow(payload.recipe));
+		if (recipeError) throw recipeError;
+		const { error: clearIngredients } = await supabase
+			.from('recipe_ingredients')
+			.delete()
+			.eq('recipe_id', payload.recipe.id);
+		if (clearIngredients) throw clearIngredients;
+		if (payload.ingredients.length > 0) {
+			const { error } = await supabase.from('recipe_ingredients').insert(payload.ingredients);
+			if (error) throw error;
+		}
+		const { error: clearSteps } = await supabase
+			.from('recipe_steps')
+			.delete()
+			.eq('recipe_id', payload.recipe.id);
+		if (clearSteps) throw clearSteps;
+		if (payload.steps.length > 0) {
+			const { error } = await supabase.from('recipe_steps').insert(payload.steps);
+			if (error) throw error;
+		}
+	} else if (payload.kind === 'recipeDelete') {
+		const { error } = await supabase.from('recipes').delete().eq('id', payload.recipeId);
+		if (error) throw error;
+		if (payload.imagePath) {
+			await supabase.storage.from('recipe-images').remove([payload.imagePath]);
+		}
 	}
 }
 
@@ -658,6 +775,80 @@ export async function persistHouseholdUpdate(
 	await pushOrQueue(supabase, { kind: 'householdUpdate', householdId, patch: stamped });
 }
 
+export async function persistRecipeUpsert(
+	supabase: BasementClient,
+	userId: string,
+	recipe: Recipe,
+	ingredients: RecipeIngredient[],
+	steps: RecipeStep[]
+) {
+	await mutateSnapshot(userId, (snap) => applyRecipeBundle(snap, recipe, ingredients, steps));
+	await pushOrQueue(supabase, { kind: 'recipeUpsert', recipe, ingredients, steps });
+}
+
+export async function persistRecipeDelete(
+	supabase: BasementClient,
+	userId: string,
+	recipeId: string,
+	imagePath = ''
+) {
+	await mutateSnapshot(userId, (snap) => removeRecipeFromSnap(snap, recipeId));
+	await pushOrQueue(supabase, { kind: 'recipeDelete', recipeId, imagePath });
+}
+
+export async function persistRecipeToList(
+	supabase: BasementClient,
+	userId: string,
+	list: ShoppingList,
+	ingredients: ListAddInput[]
+) {
+	const snap =
+		(await readSnapshot(userId)) ??
+		emptySnapshot(userId, {
+			id: userId,
+			display_name: 'Shopper',
+			locale: 'en',
+			created_at: nowIso(),
+			updated_at: nowIso()
+		});
+	const existing = snap.items.filter((item) => item.list_id === list.id);
+	const plan = planRecipeListAdds(existing, ingredients);
+	for (const update of plan.updates) {
+		await persistItemUpdate(supabase, userId, update.itemId, {
+			quantity: update.quantity,
+			note: update.note,
+			category: update.category
+		});
+	}
+	for (const input of plan.adds) {
+		const now = nowIso();
+		const sort_order = nextFrontSortOrder(
+			existing
+				.filter((item) => !item.checked && (item.category || '') === (input.category || ''))
+				.map((item) => item.sort_order)
+		);
+		const item: ListItem = {
+			id: crypto.randomUUID(),
+			list_id: list.id,
+			name: input.name,
+			quantity: input.quantity,
+			note: input.note,
+			category: input.category,
+			checked: false,
+			checked_at: null,
+			checked_by: null,
+			sort_order,
+			created_by: userId,
+			created_at: now,
+			updated_at: now
+		};
+		existing.push(item);
+		await persistItemAdd(supabase, userId, item, list.household_id);
+	}
+	await persistListUpdate(supabase, userId, list.id, { updated_at: nowIso() });
+	return { added: plan.adds.length, merged: plan.updates.length };
+}
+
 export function applyRemoteList(snap: OfflineSnapshot, row: ShoppingList | null, event: string) {
 	if (event === 'DELETE' && row) {
 		return {
@@ -742,4 +933,21 @@ export function matchesQuery(item: ListItem, query: string) {
 		item.quantity.toLowerCase().includes(q) ||
 		item.category.toLowerCase().includes(q)
 	);
+}
+
+export function recipesForHousehold(snap: OfflineSnapshot, householdId?: string) {
+	return snap.recipes
+		.filter((recipe) => !householdId || recipe.household_id === householdId)
+		.sort((a, b) => b.updated_at.localeCompare(a.updated_at) || a.title.localeCompare(b.title));
+}
+
+export function recipeDetail(snap: OfflineSnapshot, recipeId: string) {
+	const recipe = snap.recipes.find((row) => row.id === recipeId) ?? null;
+	const ingredients = snap.recipeIngredients
+		.filter((row) => row.recipe_id === recipeId)
+		.sort((a, b) => a.sort_order - b.sort_order);
+	const steps = snap.recipeSteps
+		.filter((row) => row.recipe_id === recipeId)
+		.sort((a, b) => a.sort_order - b.sort_order);
+	return { recipe, ingredients, steps };
 }

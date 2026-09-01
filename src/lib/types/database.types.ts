@@ -74,6 +74,40 @@ export type ItemCatalogRow = {
 	updated_at: string;
 };
 
+export type RecipeRow = {
+	id: string;
+	household_id: string;
+	title: string;
+	description: string;
+	servings: number;
+	image_path: string;
+	calories: number;
+	fat_g: number;
+	protein_g: number;
+	fiber_g: number;
+	created_by: string;
+	created_at: string;
+	updated_at: string;
+};
+
+export type RecipeIngredientRow = {
+	id: string;
+	recipe_id: string;
+	name: string;
+	amount: number | null;
+	unit: string;
+	note: string;
+	category: string;
+	sort_order: number;
+};
+
+export type RecipeStepRow = {
+	id: string;
+	recipe_id: string;
+	instruction: string;
+	sort_order: number;
+};
+
 type Table<Row, Insert = Partial<Row> & Record<string, never>, Update = Partial<Row>> = {
 	Row: Row;
 	Insert: Insert;
@@ -160,6 +194,49 @@ export interface Database {
 				},
 				Partial<ItemCatalogRow>
 			>;
+			recipes: Table<
+				RecipeRow,
+				{
+					household_id: string;
+					title: string;
+					created_by: string;
+					id?: string;
+					description?: string;
+					servings?: number;
+					image_path?: string;
+					calories?: number;
+					fat_g?: number;
+					protein_g?: number;
+					fiber_g?: number;
+					created_at?: string;
+					updated_at?: string;
+				},
+				Partial<RecipeRow>
+			>;
+			recipe_ingredients: Table<
+				RecipeIngredientRow,
+				{
+					recipe_id: string;
+					name: string;
+					id?: string;
+					amount?: number | null;
+					unit?: string;
+					note?: string;
+					category?: string;
+					sort_order?: number;
+				},
+				Partial<RecipeIngredientRow>
+			>;
+			recipe_steps: Table<
+				RecipeStepRow,
+				{
+					recipe_id: string;
+					instruction: string;
+					id?: string;
+					sort_order?: number;
+				},
+				Partial<RecipeStepRow>
+			>;
 		};
 		Views: Record<never, never>;
 		Functions: Record<never, never>;
@@ -175,3 +252,6 @@ export type HouseholdInvite = HouseholdInviteRow;
 export type ShoppingList = ListRow;
 export type ListItem = ListItemRow;
 export type ItemCatalog = ItemCatalogRow;
+export type Recipe = RecipeRow;
+export type RecipeIngredient = RecipeIngredientRow;
+export type RecipeStep = RecipeStepRow;

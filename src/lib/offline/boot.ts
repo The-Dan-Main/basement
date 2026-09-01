@@ -57,9 +57,11 @@ export async function bootOffline(
 			await flushOutbox(supabase);
 			const paths = [
 				'/app',
+				'/app/recipes',
 				'/app/household',
 				'/app/settings',
-				...snap.lists.map((list) => `/app/lists/${list.id}`)
+				...snap.lists.map((list) => `/app/lists/${list.id}`),
+				...snap.recipes.map((recipe) => `/app/recipes/${recipe.id}`)
 			];
 			await Promise.allSettled(paths.map((path) => preloadCode(path)));
 			await Promise.allSettled(paths.slice(0, 8).map((path) => preloadData(path)));
