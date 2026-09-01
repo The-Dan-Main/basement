@@ -57,6 +57,7 @@ create table if not exists public.lists (
 	id uuid primary key default gen_random_uuid(),
 	household_id uuid not null references public.households (id) on delete cascade,
 	name text not null,
+	emoji text not null default '',
 	sort_order integer not null default 0,
 	archived_at timestamptz,
 	created_by uuid not null references public.profiles (id) on delete restrict,
@@ -70,8 +71,10 @@ create table if not exists public.list_items (
 	name text not null,
 	quantity text not null default '',
 	note text not null default '',
+	category text not null default '',
 	checked boolean not null default false,
 	checked_at timestamptz,
+	checked_by uuid references public.profiles (id) on delete set null,
 	sort_order integer not null default 0,
 	created_by uuid not null references public.profiles (id) on delete restrict,
 	created_at timestamptz not null default now(),
@@ -83,6 +86,7 @@ create table if not exists public.item_catalog (
 	household_id uuid not null references public.households (id) on delete cascade,
 	name text not null,
 	display_name text not null,
+	category text not null default '',
 	use_count integer not null default 1,
 	last_used_at timestamptz not null default now(),
 	created_at timestamptz not null default now(),
@@ -94,6 +98,8 @@ create index if not exists household_members_user_id_idx on public.household_mem
 create index if not exists household_invites_email_idx on public.household_invites (lower(email));
 create index if not exists lists_household_id_idx on public.lists (household_id, sort_order, created_at desc);
 create index if not exists list_items_list_id_idx on public.list_items (list_id, sort_order, created_at desc);
+create index if not exists list_items_category_idx on public.list_items (list_id, category);
+create index if not exists list_items_checked_by_idx on public.list_items (checked_by);
 create index if not exists item_catalog_household_name_idx on public.item_catalog (household_id, name);
 
 drop trigger if exists profiles_touch on public.profiles;
