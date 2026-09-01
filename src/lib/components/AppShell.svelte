@@ -30,6 +30,11 @@
 			match: (value: string) => value === '/app' || value.startsWith('/app/lists')
 		},
 		{
+			href: '/app/recipes' as const,
+			label: t.nav.recipes,
+			match: (value: string) => value.startsWith('/app/recipes')
+		},
+		{
 			href: '/app/household' as const,
 			label: t.nav.household,
 			match: (value: string) => value.startsWith('/app/household')
@@ -102,7 +107,7 @@
 	</div>
 
 	<nav
-		class="fixed right-0 bottom-0 left-0 z-30 grid grid-cols-2 border-t border-line bg-ink/90 px-2 pt-2 backdrop-blur-md md:hidden"
+		class="fixed right-0 bottom-0 left-0 z-30 grid grid-cols-3 border-t border-line bg-ink/90 px-2 pt-2 backdrop-blur-md md:hidden"
 		style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom))"
 	>
 		{#each mobileLinks as link (link.href)}

@@ -8,7 +8,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 	if (session) redirect(303, '/app');
 
 	const migrations = path.join(process.cwd(), 'supabase/migrations');
-	const files = ['001_init.sql', '002_locale.sql', '003_shopping_features.sql'];
+	const files = ['001_init.sql', '002_locale.sql', '003_shopping_features.sql', '004_recipes.sql'];
 	const chunks = await Promise.all(
 		files.map((file) => readFile(path.join(migrations, file), 'utf8'))
 	);
