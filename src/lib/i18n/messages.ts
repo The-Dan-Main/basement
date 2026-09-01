@@ -109,7 +109,8 @@ const en = {
 		emptyTitle: 'No lists yet',
 		emptyBody: 'Add Groceries or Hardware and start ticking things off.',
 		left: '{unchecked} left · {total} items',
-		emoji: 'List icon'
+		emoji: 'List icon',
+		drag: 'Drag to reorder {name}'
 	},
 	list: {
 		title: '{name} · Basement',
@@ -146,7 +147,8 @@ const en = {
 		uncheck: 'Uncheck {name}',
 		aisle: 'Aisle',
 		staples: 'Usually bought',
-		duplicate: 'Already on the list'
+		duplicate: 'Already on the list',
+		drag: 'Drag to reorder {name}'
 	},
 	categories: {
 		none: 'No aisle',
@@ -329,7 +331,8 @@ const de: typeof en = {
 		emptyTitle: 'Noch keine Listen',
 		emptyBody: 'Lege Lebensmittel oder Baumarkt an und hak ab.',
 		left: '{unchecked} übrig · {total} Artikel',
-		emoji: 'Listen-Symbol'
+		emoji: 'Listen-Symbol',
+		drag: '{name} zum Sortieren ziehen'
 	},
 	list: {
 		title: '{name} · Basement',
@@ -366,7 +369,8 @@ const de: typeof en = {
 		uncheck: '{name} zurücksetzen',
 		aisle: 'Gang',
 		staples: 'Wird oft gekauft',
-		duplicate: 'Steht schon auf der Liste'
+		duplicate: 'Steht schon auf der Liste',
+		drag: '{name} zum Sortieren ziehen'
 	},
 	categories: {
 		none: 'Kein Gang',

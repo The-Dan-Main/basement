@@ -4,6 +4,7 @@ import { fetchAllRows, nowIso } from '$lib/data';
 import { kvGet, kvSet, outboxAdd, outboxAll, outboxCount, outboxDelete } from '$lib/offline/db';
 import { publishProfile, publishSnapshot } from '$lib/offline/live.svelte';
 import { isOnline, setOfflineStatus } from '$lib/offline/status';
+import type { OrderPatch } from '$lib/sort';
 import type { BasementClient } from '$lib/supabase/client';
 import type {
 	Household,
@@ -42,6 +43,8 @@ export type OutboxPayload =
 	  }
 	| { kind: 'itemDelete'; itemId: string }
 	| { kind: 'itemsDelete'; itemIds: string[] }
+	| { kind: 'listsReorder'; updates: OrderPatch[]; updated_at: string }
+	| { kind: 'itemsReorder'; updates: OrderPatch[]; updated_at: string }
 	| { kind: 'householdUpdate'; householdId: string; patch: Partial<Household> };
 
 const SNAP_KEY = 'snapshot';
@@ -130,6 +133,9 @@ export function pendingItemIds(payloads: OutboxPayload[]) {
 		if (payload.kind === 'itemsDelete') {
 			for (const id of payload.itemIds) ids.add(id);
 		}
+		if (payload.kind === 'itemsReorder') {
+			for (const update of payload.updates) ids.add(update.id);
+		}
 	}
 	return ids;
 }
@@ -189,6 +195,10 @@ function applyOutbox(snap: OfflineSnapshot, payloads: OutboxPayload[]): OfflineS
 		} else if (payload.kind === 'itemsDelete') {
 			const removed = new Set(payload.itemIds);
 			next = { ...next, items: next.items.filter((item) => !removed.has(item.id)) };
+		} else if (payload.kind === 'listsReorder') {
+			next = applyOrderPatches(next, 'lists', payload.updates, payload.updated_at);
+		} else if (payload.kind === 'itemsReorder') {
+			next = applyOrderPatches(next, 'items', payload.updates, payload.updated_at);
 		} else if (payload.kind === 'householdUpdate') {
 			next = {
 				...next,
@@ -199,6 +209,37 @@ function applyOutbox(snap: OfflineSnapshot, payloads: OutboxPayload[]): OfflineS
 		}
 	}
 	return next;
+}
+
+function applyOrderPatches(
+	snap: OfflineSnapshot,
+	key: 'lists' | 'items',
+	updates: OrderPatch[],
+	updated_at: string
+): OfflineSnapshot {
+	const byId = new Map(updates.map((update) => [update.id, update]));
+	if (key === 'lists') {
+		return {
+			...snap,
+			lists: snap.lists.map((row) => {
+				const patch = byId.get(row.id);
+				return patch ? { ...row, sort_order: patch.sort_order, updated_at } : row;
+			})
+		};
+	}
+	return {
+		...snap,
+		items: snap.items.map((row) => {
+			const patch = byId.get(row.id);
+			if (!patch) return row;
+			return {
+				...row,
+				sort_order: patch.sort_order,
+				...(patch.category !== undefined ? { category: patch.category } : {}),
+				updated_at
+			};
+		})
+	};
 }
 
 export async function snapshotWithOutbox(snap: OfflineSnapshot) {
@@ -347,11 +388,10 @@ async function pushPayload(supabase: BasementClient, payload: OutboxPayload) {
 		const { error } = await supabase.from('lists').delete().eq('id', payload.listId);
 		if (error) throw error;
 	} else if (payload.kind === 'itemAdd') {
-		await writeRow(
-			(row) => supabase.from('list_items').insert(row),
-			payload.item,
-			['category', 'checked_by']
-		);
+		await writeRow((row) => supabase.from('list_items').insert(row), payload.item, [
+			'category',
+			'checked_by'
+		]);
 		if (payload.catalog) {
 			await writeRow(
 				(row) =>
@@ -385,12 +425,43 @@ async function pushPayload(supabase: BasementClient, payload: OutboxPayload) {
 		if (payload.itemIds.length === 0) return;
 		const { error } = await supabase.from('list_items').delete().in('id', payload.itemIds);
 		if (error) throw error;
+	} else if (payload.kind === 'listsReorder') {
+		await pushOrderPatches(supabase, 'lists', payload.updates, payload.updated_at);
+	} else if (payload.kind === 'itemsReorder') {
+		await pushOrderPatches(supabase, 'list_items', payload.updates, payload.updated_at);
 	} else if (payload.kind === 'householdUpdate') {
 		const { error } = await supabase
 			.from('households')
 			.update(payload.patch)
 			.eq('id', payload.householdId);
 		if (error) throw error;
+	}
+}
+
+async function pushOrderPatches(
+	supabase: BasementClient,
+	table: 'lists' | 'list_items',
+	updates: OrderPatch[],
+	updated_at: string
+) {
+	for (const update of updates) {
+		if (table === 'lists') {
+			await writeRow(
+				(next) => supabase.from('lists').update(next).eq('id', update.id),
+				{ sort_order: update.sort_order, updated_at },
+				[]
+			);
+			continue;
+		}
+		await writeRow(
+			(next) => supabase.from('list_items').update(next).eq('id', update.id),
+			{
+				sort_order: update.sort_order,
+				updated_at,
+				...(update.category !== undefined ? { category: update.category } : {})
+			},
+			[]
+		);
 	}
 }
 
@@ -474,6 +545,17 @@ export async function persistListDelete(supabase: BasementClient, userId: string
 	await pushOrQueue(supabase, { kind: 'listDelete', listId });
 }
 
+export async function persistListsReorder(
+	supabase: BasementClient,
+	userId: string,
+	updates: OrderPatch[]
+) {
+	if (updates.length === 0) return;
+	const updated_at = nowIso();
+	await mutateSnapshot(userId, (snap) => applyOrderPatches(snap, 'lists', updates, updated_at));
+	await pushOrQueue(supabase, { kind: 'listsReorder', updates, updated_at });
+}
+
 export async function persistItemAdd(
 	supabase: BasementClient,
 	userId: string,
@@ -549,6 +631,17 @@ export async function persistItemsDelete(
 	await pushOrQueue(supabase, { kind: 'itemsDelete', itemIds });
 }
 
+export async function persistItemsReorder(
+	supabase: BasementClient,
+	userId: string,
+	updates: OrderPatch[]
+) {
+	if (updates.length === 0) return;
+	const updated_at = nowIso();
+	await mutateSnapshot(userId, (snap) => applyOrderPatches(snap, 'items', updates, updated_at));
+	await pushOrQueue(supabase, { kind: 'itemsReorder', updates, updated_at });
+}
+
 export async function persistHouseholdUpdate(
 	supabase: BasementClient,
 	userId: string,
@@ -617,10 +710,11 @@ export function listSummaries(snap: OfflineSnapshot) {
 				emoji: list.emoji ?? '',
 				unchecked: items.filter((item) => !item.checked).length,
 				total: items.length,
+				sort_order: list.sort_order,
 				updated_at: list.updated_at
 			};
 		})
-		.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+		.sort((a, b) => a.sort_order - b.sort_order || b.updated_at.localeCompare(a.updated_at));
 }
 
 export function itemsForList(snap: OfflineSnapshot, listId: string) {

@@ -24,5 +24,6 @@ export type ListSummary = {
 	emoji: string;
 	unchecked: number;
 	total: number;
+	sort_order: number;
 	updated_at: string;
 };
