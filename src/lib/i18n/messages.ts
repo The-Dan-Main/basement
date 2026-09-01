@@ -108,7 +108,8 @@ const en = {
 		adding: 'Adding…',
 		emptyTitle: 'No lists yet',
 		emptyBody: 'Add Groceries or Hardware and start ticking things off.',
-		left: '{unchecked} left · {total} items'
+		left: '{unchecked} left · {total} items',
+		emoji: 'List icon'
 	},
 	list: {
 		title: '{name} · Basement',
@@ -119,8 +120,18 @@ const en = {
 		delete: 'Delete',
 		deleteConfirm: 'Delete {name}?',
 		empty: 'Nothing left to pick up.',
+		emptySearch: 'Nothing matches “{query}”.',
 		hideChecked: 'Hide {count} checked',
-		showChecked: 'Show {count} checked'
+		showChecked: 'Show {count} checked',
+		search: 'Search this list',
+		share: 'Share',
+		copied: 'Copied',
+		clearChecked: 'Clear checked',
+		clearConfirm: 'Remove {count} checked items?',
+		addedBy: 'Added by {name}',
+		checkedBy: 'Checked by {name}',
+		shareOpen: 'Still to get',
+		shareDone: 'Already got'
 	},
 	items: {
 		placeholder: 'Add milk, eggs…',
@@ -132,7 +143,23 @@ const en = {
 		edit: 'Edit',
 		delete: 'Delete',
 		check: 'Check {name}',
-		uncheck: 'Uncheck {name}'
+		uncheck: 'Uncheck {name}',
+		aisle: 'Aisle',
+		staples: 'Usually bought',
+		duplicate: 'Already on the list'
+	},
+	categories: {
+		none: 'No aisle',
+		produce: 'Produce',
+		dairy: 'Dairy',
+		bakery: 'Bakery',
+		meat: 'Meat & fish',
+		frozen: 'Frozen',
+		drinks: 'Drinks',
+		pantry: 'Pantry',
+		household: 'Household',
+		personal: 'Personal care',
+		other: 'Other'
 	},
 	household: {
 		title: 'Household · Basement',
@@ -301,7 +328,8 @@ const de: typeof en = {
 		adding: 'Wird angelegt…',
 		emptyTitle: 'Noch keine Listen',
 		emptyBody: 'Lege Lebensmittel oder Baumarkt an und hak ab.',
-		left: '{unchecked} übrig · {total} Artikel'
+		left: '{unchecked} übrig · {total} Artikel',
+		emoji: 'Listen-Symbol'
 	},
 	list: {
 		title: '{name} · Basement',
@@ -312,8 +340,18 @@ const de: typeof en = {
 		delete: 'Löschen',
 		deleteConfirm: '{name} löschen?',
 		empty: 'Nichts mehr einzupacken.',
+		emptySearch: 'Nichts zu „{query}“ gefunden.',
 		hideChecked: '{count} Erledigte ausblenden',
-		showChecked: '{count} Erledigte anzeigen'
+		showChecked: '{count} Erledigte anzeigen',
+		search: 'Liste durchsuchen',
+		share: 'Teilen',
+		copied: 'Kopiert',
+		clearChecked: 'Erledigte löschen',
+		clearConfirm: '{count} erledigte Artikel entfernen?',
+		addedBy: 'Hinzugefügt von {name}',
+		checkedBy: 'Abgehakt von {name}',
+		shareOpen: 'Noch holen',
+		shareDone: 'Schon geholt'
 	},
 	items: {
 		placeholder: 'Milch, Eier…',
@@ -325,7 +363,23 @@ const de: typeof en = {
 		edit: 'Bearbeiten',
 		delete: 'Löschen',
 		check: '{name} abhaken',
-		uncheck: '{name} zurücksetzen'
+		uncheck: '{name} zurücksetzen',
+		aisle: 'Gang',
+		staples: 'Wird oft gekauft',
+		duplicate: 'Steht schon auf der Liste'
+	},
+	categories: {
+		none: 'Kein Gang',
+		produce: 'Obst & Gemüse',
+		dairy: 'Kühlregal',
+		bakery: 'Bäckerei',
+		meat: 'Fleisch & Fisch',
+		frozen: 'Tiefkühl',
+		drinks: 'Getränke',
+		pantry: 'Vorrat',
+		household: 'Haushalt',
+		personal: 'Drogerie',
+		other: 'Sonstiges'
 	},
 	household: {
 		title: 'Haushalt · Basement',

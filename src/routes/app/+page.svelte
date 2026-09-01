@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import EmojiPicker from '$lib/components/EmojiPicker.svelte';
 	import { nowIso } from '$lib/data';
 	import { getI18n } from '$lib/i18n/i18n.svelte';
 	import { fill } from '$lib/i18n/locales';
@@ -12,6 +13,7 @@
 	const i18n = getI18n();
 	const t = $derived(i18n.t);
 	let name = $state('');
+	let emoji = $state('🛒');
 	let creating = $state(false);
 
 	const snap = $derived(resolveSnapshot(data.snap) ?? data.snap);
@@ -27,6 +29,7 @@
 			id: crypto.randomUUID(),
 			household_id: defaultHousehold.id,
 			name: trimmed,
+			emoji,
 			sort_order: 0,
 			archived_at: null,
 			created_by: data.user.id,
@@ -63,6 +66,7 @@
 					{creating ? t.lists.adding : t.lists.add}
 				</button>
 			</form>
+			<EmojiPicker bind:value={emoji} />
 		{/if}
 	</section>
 
@@ -81,7 +85,9 @@
 					<div class="flex items-start justify-between gap-4">
 						<div>
 							<p class="text-xs tracking-[0.18em] text-fog uppercase">{list.household_name}</p>
-							<h2 class="mt-2 text-xl font-semibold">{list.name}</h2>
+							<h2 class="mt-2 text-xl font-semibold">
+								{#if list.emoji}<span class="mr-1">{list.emoji}</span>{/if}{list.name}
+							</h2>
 						</div>
 						<span class="rounded-full bg-gold/15 px-3 py-1 text-sm font-semibold text-gold">
 							{list.unchecked}
