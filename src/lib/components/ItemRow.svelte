@@ -1,5 +1,6 @@
 <script lang="ts">
 	import CategorySelect from '$lib/components/CategorySelect.svelte';
+	import GripHandle from '$lib/components/GripHandle.svelte';
 	import { categoryLabel } from '$lib/categories';
 	import { getI18n } from '$lib/i18n/i18n.svelte';
 	import { fill } from '$lib/i18n/locales';
@@ -10,6 +11,8 @@
 		item,
 		addedBy,
 		checkedBy,
+		sortable = false,
+		dragging = false,
 		ontoggle,
 		ondelete,
 		onsave
@@ -17,6 +20,8 @@
 		item: ListItem;
 		addedBy: string;
 		checkedBy: string;
+		sortable?: boolean;
+		dragging?: boolean;
 		ontoggle: () => void;
 		ondelete: () => void;
 		onsave: (patch: { name: string; quantity: string; note: string; category: string }) => void;
@@ -51,8 +56,16 @@
 	}
 </script>
 
-<article class="rounded-3xl border border-line bg-panel">
+<article
+	class={[
+		'rounded-3xl border border-line bg-panel',
+		dragging && 'border-gold/50 shadow-[0_12px_40px_rgba(0,0,0,0.35)]'
+	]}
+>
 	<div class="flex items-stretch">
+		{#if sortable && !editing}
+			<GripHandle label={fill(t.items.drag, { name: item.name })} />
+		{/if}
 		<button
 			class="grid w-16 shrink-0 place-items-center text-gold"
 			type="button"

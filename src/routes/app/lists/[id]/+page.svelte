@@ -4,6 +4,7 @@
 	import AddItemBar from '$lib/components/AddItemBar.svelte';
 	import EmojiPicker from '$lib/components/EmojiPicker.svelte';
 	import ItemRow from '$lib/components/ItemRow.svelte';
+	import SortableList from '$lib/components/SortableList.svelte';
 	import { categoryLabel, groupItemsByCategory } from '$lib/categories';
 	import { nowIso } from '$lib/data';
 	import { getI18n } from '$lib/i18n/i18n.svelte';
@@ -19,6 +20,7 @@
 		persistItemAdd,
 		persistItemDelete,
 		persistItemsDelete,
+		persistItemsReorder,
 		persistItemToggle,
 		persistItemUpdate,
 		persistListDelete,
@@ -26,6 +28,13 @@
 		writeSnapshot
 	} from '$lib/offline/sync';
 	import { formatListShare, shareOrCopy } from '$lib/share';
+	import {
+		groupOrderPatches,
+		nextFrontSortOrder,
+		sortableGroupKey,
+		transferToGroup,
+		type OrderGroup
+	} from '$lib/sort';
 	import { btnGhost, btnQuiet, fieldClass } from '$lib/ui';
 	import type { ListItem } from '$lib/types/app';
 
@@ -117,7 +126,11 @@
 			checked: false,
 			checked_at: null,
 			checked_by: null,
-			sort_order: 0,
+			sort_order: nextFrontSortOrder(
+				grouped.unchecked
+					.filter((row) => (row.category || '') === (input.category || ''))
+					.map((row) => row.sort_order)
+			),
 			created_by: data.user.id,
 			created_at: now,
 			updated_at: now
@@ -172,6 +185,27 @@
 
 	function actor(userId: string | null | undefined) {
 		return memberName(snap, userId);
+	}
+
+	function currentGroups(): OrderGroup<ListItem>[] {
+		return aisleGroups.map((group) => ({ category: group.category, items: group.items }));
+	}
+
+	async function persistGroups(groups: OrderGroup<ListItem>[]) {
+		if (!data.supabase || !data.user) return;
+		await persistItemsReorder(data.supabase, data.user.id, groupOrderPatches(groups));
+	}
+
+	async function reorderGroup(category: string, ordered: ListItem[]) {
+		await persistGroups(
+			currentGroups().map((group) =>
+				group.category === category ? { ...group, items: ordered } : group
+			)
+		);
+	}
+
+	async function transferItem(itemId: string, toCategory: string, index: number) {
+		await persistGroups(transferToGroup(currentGroups(), itemId, toCategory, index));
 	}
 </script>
 
@@ -236,15 +270,26 @@
 				</p>
 			{:else}
 				{#each aisleGroups as group (group.category || 'none')}
-					<div class="space-y-3">
-						{#if group.category || aisleGroups.length > 1}
-							<p class="text-xs tracking-[0.18em] text-fog uppercase">
-								{categoryLabel(t.categories, group.category)}
-							</p>
-						{/if}
-						{#each group.items as item (item.id)}
+					<SortableList
+						items={group.items}
+						getId={(item) => item.id}
+						group={sortableGroupKey(group.category)}
+						disabled={Boolean(query.trim())}
+						onreorder={(ordered) => void reorderGroup(group.category, ordered)}
+						ontransfer={(itemId, toCategory, index) => void transferItem(itemId, toCategory, index)}
+					>
+						{#snippet lead()}
+							{#if group.category || aisleGroups.length > 1}
+								<p class="text-xs tracking-[0.18em] text-fog uppercase">
+									{categoryLabel(t.categories, group.category)}
+								</p>
+							{/if}
+						{/snippet}
+						{#snippet children(item, { dragging })}
 							<ItemRow
 								{item}
+								{dragging}
+								sortable={!query.trim()}
 								addedBy={actor(item.created_by)}
 								checkedBy={actor(item.checked_by)}
 								ontoggle={() =>
@@ -260,8 +305,8 @@
 									data.user &&
 									persistItemUpdate(data.supabase, data.user.id, item.id, patch)}
 							/>
-						{/each}
-					</div>
+						{/snippet}
+					</SortableList>
 				{/each}
 			{/if}
 		</section>
