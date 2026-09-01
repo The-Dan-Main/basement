@@ -1,9 +1,23 @@
 <!doctype html>
-<html lang="en">
+<html lang="%lang%" class="dark">
 	<head>
 		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 		<meta name="text-scale" content="scale" />
+		<meta name="color-scheme" content="dark" />
+		<meta name="theme-color" content="#061018" />
+		<meta name="mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+		<meta name="apple-mobile-web-app-title" content="Basement" />
+		<meta name="application-name" content="Basement" />
+		<meta
+			name="description"
+			content="Basement is an installable shopping list app for households. Share lists, check off items in the store, and keep going offline."
+		/>
+		<link rel="manifest" href="/manifest.webmanifest" />
+		<link rel="apple-touch-icon" href="/icons/icon.svg" />
+		<link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

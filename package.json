@@ -3,13 +3,19 @@
 	"private": true,
 	"version": "0.0.1",
 	"type": "module",
+	"engines": {
+		"node": "22"
+	},
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
+		"start": "node build/index.js",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"prep": "npm run format && npm run lint",
+		"gen-types": "npx supabase gen types typescript --project-id \"$SUPABASE_PROJECT_ID\" > src/lib/types/database.types.ts",
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write ."
 	},
@@ -33,5 +39,10 @@
 		"typescript": "^6.0.3",
 		"typescript-eslint": "^8.60.1",
 		"vite": "^8.0.16"
+	},
+	"dependencies": {
+		"@fontsource/outfit": "^5.3.0",
+		"@supabase/ssr": "^0.12.5",
+		"@supabase/supabase-js": "^2.112.4"
 	}
 }

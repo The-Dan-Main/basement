@@ -1,0 +1,34 @@
+{
+	"id": "/",
+	"name": "Basement",
+	"short_name": "Basement",
+	"description": "Household shopping lists that work in the store, even offline.",
+	"start_url": "/app",
+	"scope": "/",
+	"display": "standalone",
+	"display_override": ["standalone", "minimal-ui"],
+	"orientation": "any",
+	"background_color": "#061018",
+	"theme_color": "#061018",
+	"lang": "en",
+	"dir": "ltr",
+	"prefer_related_applications": false,
+	"categories": ["shopping", "productivity"],
+	"shortcuts": [
+		{
+			"name": "Lists",
+			"short_name": "Lists",
+			"description": "Open your shopping lists",
+			"url": "/app",
+			"icons": [{ "src": "/icons/icon.svg", "sizes": "any" }]
+		}
+	],
+	"icons": [
+		{
+			"src": "/icons/icon.svg",
+			"sizes": "any",
+			"type": "image/svg+xml",
+			"purpose": "any"
+		}
+	]
+}
