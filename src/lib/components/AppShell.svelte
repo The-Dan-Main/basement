@@ -58,7 +58,7 @@
 	const mobileLinks = $derived(links.filter((link) => link.href !== '/app/settings'));
 </script>
 
-<div class="min-h-dvh bg-ink">
+<div class="min-h-dvh overflow-x-clip bg-ink">
 	<OfflineBanner />
 	<header
 		class="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-line/80 bg-ink/85 px-4 py-3 backdrop-blur-md md:px-6"
@@ -93,7 +93,7 @@
 		</div>
 	</header>
 
-	<div class="mx-auto flex max-w-6xl">
+	<div class="mx-auto flex w-full min-w-0 max-w-6xl">
 		<nav class="sticky top-20 hidden w-48 shrink-0 flex-col gap-1 self-start p-4 md:flex">
 			{#each links as link (link.href)}
 				<a
@@ -111,7 +111,7 @@
 			</form>
 		</nav>
 
-		<main class="min-w-0 flex-1 px-4 py-6 pb-28 md:px-6 md:pb-10">
+		<main class="min-w-0 flex-1 overflow-x-clip px-4 py-6 pb-28 md:px-6 md:pb-10">
 			{@render children()}
 		</main>
 	</div>
