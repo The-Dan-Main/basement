@@ -123,4 +123,9 @@ grant select on public.recipes to anon;
 grant select on public.recipe_ingredients to anon;
 grant select on public.recipe_steps to anon;
 
+-- RLS helpers live in schema private. Anon must execute is_household_member
+-- because SELECT policies are `is_public OR is_household_member(...)`.
+grant usage on schema private to anon;
+grant execute on function private.is_household_member(uuid) to anon;
+
 notify pgrst, 'reload schema';
