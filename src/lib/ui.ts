@@ -10,7 +10,7 @@ export const btnQuiet =
 export const fieldClass =
 	'w-full min-w-0 max-w-full rounded-2xl border border-line bg-ink-soft px-4 py-3 text-paper outline-none placeholder:text-fog/70 focus:border-gold/70';
 
-export const labelClass = 'flex min-w-0 flex-col gap-3 text-sm';
+export const labelClass = 'flex min-w-0 flex-col gap-4 text-sm';
 
 export const selectClass =
 	'select-chevron w-fit min-w-0 max-w-full shrink-0 rounded-2xl border border-line bg-ink-soft py-3 pl-4 text-paper outline-none focus:border-gold/70';

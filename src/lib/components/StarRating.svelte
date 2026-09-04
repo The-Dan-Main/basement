@@ -24,7 +24,7 @@
 	{#each [1, 2, 3, 4, 5] as star (star)}
 		<button
 			class={[
-				'grid size-11 place-items-center rounded-full text-2xl leading-none sm:size-[3.375rem] sm:text-[1.875rem]',
+				'grid size-[3.375rem] place-items-center rounded-full text-[1.875rem] leading-none',
 				star <= value ? 'text-gold' : 'text-line',
 				readonly ? 'cursor-default' : 'hover:bg-white/5'
 			]}
