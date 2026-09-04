@@ -21,11 +21,7 @@
 	const i18n = getI18n();
 	const t = $derived(i18n.t);
 	const recipe = $derived(data.recipe);
-	let servings = $state(0);
-
-	$effect(() => {
-		if (recipe && servings === 0) servings = recipe.servings;
-	});
+	let servings = $derived(data.recipe.servings);
 
 	const factor = $derived(scaleFactor(recipe.servings, servings || recipe.servings));
 	const scaled = $derived(scaledIngredients(data.ingredients, factor));
