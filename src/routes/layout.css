@@ -22,10 +22,12 @@
 	html {
 		color-scheme: dark;
 		background: var(--color-ink);
+		overflow-x: clip;
+		max-width: 100%;
 	}
 
 	body {
-		@apply min-h-dvh bg-ink font-sans text-paper antialiased;
+		@apply min-h-dvh max-w-full overflow-x-clip bg-ink font-sans text-paper antialiased;
 	}
 
 	::selection {
