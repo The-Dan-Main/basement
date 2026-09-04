@@ -8,6 +8,8 @@ Basement is an installable PWA: dark, shared with the household, and built to ke
 
 - **Multiple lists** per household — groceries, hardware, whatever you dump on the way out
 - **Recipes** with ingredients, steps, a photo, and nutrition (calories, fat, protein, fiber)
+- **Mealie import** — zip/JSON exports or a live Mealie API token, including categories as cookbooks
+- **Cookbooks**, a **cook timeline**, star **ratings**, and **comments** on recipes and cookbooks
 - **Scale a recipe** by servings, then push the scaled ingredients onto a shopping list (merging amounts when the item is already there)
 - **Check-off that lands for everyone** via Supabase Realtime, so nobody buys a second bottle of oat milk
 - **Quantity and a note** on each item
@@ -42,7 +44,7 @@ In the [Supabase dashboard](https://supabase.com/dashboard):
 1. Authentication → URL configuration
    - Site URL = `PUBLIC_BASE_URL`
    - Redirect URLs include `{PUBLIC_BASE_URL}/auth/callback`
-2. Run the SQL in `supabase/migrations/` in order (`001_init.sql`, then `002_locale.sql`, `003_shopping_features.sql`, `004_recipes.sql` if you already applied older files). The landing page also copies this SQL when keys are missing.
+2. Run the SQL in `supabase/migrations/` in order (`001_init.sql` through `005_cookbooks_social.sql` if you already applied older files). The landing page also copies this SQL when keys are missing. Cloud agents apply new migrations through the Supabase Management API (`SUPABASE_ACCESS_TOKEN`).
 3. Enable Realtime for `public.list_items` and `public.lists` if the publication statements were skipped.
 
 Then:

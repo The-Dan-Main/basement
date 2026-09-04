@@ -46,11 +46,14 @@ const UNIT_ALIASES: Record<string, string> = {
 	gram: 'g',
 	grams: 'g',
 	gramm: 'g',
+	gramme: 'g',
+	grammes: 'g',
 	kg: 'kg',
 	kilogram: 'kg',
 	kilogramm: 'kg',
 	ml: 'ml',
 	milliliter: 'ml',
+	millilitre: 'ml',
 	l: 'l',
 	liter: 'l',
 	litre: 'l',
@@ -70,7 +73,9 @@ const UNIT_ALIASES: Record<string, string> = {
 	pinch: 'pinch',
 	prise: 'pinch',
 	clove: 'clove',
+	cloves: 'clove',
 	zehe: 'clove',
+	zehen: 'clove',
 	slice: 'slice',
 	scheibe: 'slice',
 	can: 'can',
@@ -290,7 +295,9 @@ export function hydrateRecipe(row: Recipe): Recipe {
 		fiber_g: asNumber(row.fiber_g),
 		description: row.description ?? '',
 		image_path: row.image_path ?? '',
-		image_url: row.image_url ?? ''
+		image_url: row.image_url ?? '',
+		source: row.source ?? '',
+		source_key: row.source_key ?? ''
 	};
 }
 
@@ -307,6 +314,8 @@ export function buildRecipeBundle(input: {
 	fat_g: number;
 	protein_g: number;
 	fiber_g: number;
+	source?: string;
+	sourceKey?: string;
 	ingredients: {
 		name: string;
 		amount: number | null;
@@ -331,6 +340,8 @@ export function buildRecipeBundle(input: {
 		fat_g: input.fat_g,
 		protein_g: input.protein_g,
 		fiber_g: input.fiber_g,
+		source: input.source ?? '',
+		source_key: input.sourceKey ?? '',
 		created_by: input.userId,
 		created_at: input.createdAt ?? now,
 		updated_at: input.updatedAt ?? now

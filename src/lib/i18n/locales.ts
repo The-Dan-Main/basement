@@ -32,3 +32,13 @@ export function localeFromAccept(header: string | null | undefined): Locale {
 export function fill(template: string, vars: Record<string, string | number> = {}): string {
 	return template.replace(/\{(\w+)\}/g, (_, key: string) => String(vars[key] ?? ''));
 }
+
+export function formatDay(iso: string, locale: Locale) {
+	const date = new Date(iso);
+	if (Number.isNaN(date.getTime())) return iso;
+	return date.toLocaleDateString(locale === 'de' ? 'de-CH' : 'en-GB', {
+		year: 'numeric',
+		month: 'short',
+		day: 'numeric'
+	});
+}

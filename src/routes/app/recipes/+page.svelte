@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import RecipeSubnav from '$lib/components/RecipeSubnav.svelte';
+	import StarRating from '$lib/components/StarRating.svelte';
 	import { getI18n } from '$lib/i18n/i18n.svelte';
-	import { fill } from '$lib/i18n/locales';
+	import { fill, formatDay } from '$lib/i18n/locales';
 	import { resolveSnapshot } from '$lib/offline/live.svelte';
-	import { recipesForHousehold } from '$lib/offline/sync';
+	import { averageRating, recipesForHousehold } from '$lib/offline/sync';
 	import { formatNutrition, nutritionPerServing } from '$lib/recipes';
 	import { btnPrimary, panelClass } from '$lib/ui';
 
@@ -18,6 +20,7 @@
 <svelte:head><title>{t.recipes.title}</title></svelte:head>
 
 <div class="space-y-8">
+	<RecipeSubnav />
 	<section class="flex flex-wrap items-end justify-between gap-3">
 		<div>
 			<h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">{t.recipes.heading}</h1>
@@ -36,6 +39,11 @@
 		<section class="grid gap-3 sm:grid-cols-2">
 			{#each recipes as recipe (recipe.id)}
 				{@const per = nutritionPerServing(recipe)}
+				{@const ratings = snap.recipeRatings.filter((row) => row.recipe_id === recipe.id)}
+				{@const avg = averageRating(ratings)}
+				{@const last = snap.recipeTimeline
+					.filter((row) => row.recipe_id === recipe.id)
+					.sort((a, b) => b.cooked_at.localeCompare(a.cooked_at))[0]}
 				<a
 					class={[panelClass, 'overflow-hidden transition hover:border-gold/40']}
 					href={resolve(`/app/recipes/${recipe.id}`)}
@@ -54,6 +62,14 @@
 							{#if recipe.calories}
 								· {formatNutrition(per.calories)} {t.recipes.kcal}
 							{/if}
+						</p>
+						{#if avg}
+							<StarRating value={Math.round(avg)} readonly />
+						{/if}
+						<p class="text-xs text-fog">
+							{last
+								? fill(t.recipes.lastCooked, { date: formatDay(last.cooked_at, i18n.locale) })
+								: t.recipes.neverCooked}
 						</p>
 					</div>
 				</a>

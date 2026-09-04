@@ -2,17 +2,26 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import ServingsStepper from '$lib/components/ServingsStepper.svelte';
+	import CommentThread from '$lib/components/CommentThread.svelte';
+	import StarRating from '$lib/components/StarRating.svelte';
 	import { categoryLabel } from '$lib/categories';
 	import { nowIso } from '$lib/data';
 	import { getI18n } from '$lib/i18n/i18n.svelte';
-	import { fill } from '$lib/i18n/locales';
+	import { fill, formatDay } from '$lib/i18n/locales';
 	import { resolveSnapshot } from '$lib/offline/live.svelte';
 	import {
 		listSummaries,
+		memberName,
 		persistListCreate,
+		persistRatingUpsert,
+		persistRecipeCommentAdd,
+		persistRecipeCommentDelete,
 		persistRecipeDelete,
 		persistRecipeToList,
-		recipeDetail
+		persistTimelineAdd,
+		persistTimelineDelete,
+		recipeDetail,
+		userRating
 	} from '$lib/offline/sync';
 	import {
 		formatNutrition,
@@ -37,6 +46,11 @@
 	let pushing = $state(false);
 	let message = $state('');
 	let addedListId = $state('');
+	let cookedOn = $state(new Date().toISOString().slice(0, 10));
+	let cookedNote = $state('');
+	let cookedRating = $state(0);
+	let savingCook = $state(false);
+	let commentBusy = $state(false);
 
 	$effect(() => {
 		if (recipe && servings === 0) {
@@ -49,6 +63,75 @@
 	const scaled = $derived(scaledIngredients(detail.ingredients, factor));
 	const totals = $derived(recipe ? scaleNutrition(recipe, servings || recipe.servings) : null);
 	const perPerson = $derived(recipe ? nutritionPerServing(recipe) : null);
+	const myRating = $derived(userRating(detail.ratings, data.user?.id ?? ''));
+	const comments = $derived(
+		detail.comments.map((comment) => ({
+			...comment,
+			author: memberName(snap, comment.user_id) || t.household.member
+		}))
+	);
+
+	async function setRating(next: number) {
+		if (!data.supabase || !data.user || !recipe || next < 1) return;
+		await persistRatingUpsert(data.supabase, data.user.id, {
+			recipe_id: recipe.id,
+			user_id: data.user.id,
+			rating: next,
+			updated_at: nowIso()
+		});
+	}
+
+	async function addCooked() {
+		if (!data.supabase || !data.user || !recipe) return;
+		savingCook = true;
+		const rating = cookedRating >= 1 ? cookedRating : null;
+		await persistTimelineAdd(data.supabase, data.user.id, {
+			id: crypto.randomUUID(),
+			recipe_id: recipe.id,
+			household_id: recipe.household_id,
+			user_id: data.user.id,
+			event_type: 'cooked',
+			cooked_at: new Date(`${cookedOn}T12:00:00`).toISOString(),
+			rating,
+			note: cookedNote.trim(),
+			created_at: nowIso()
+		});
+		if (rating) {
+			await persistRatingUpsert(data.supabase, data.user.id, {
+				recipe_id: recipe.id,
+				user_id: data.user.id,
+				rating,
+				updated_at: nowIso()
+			});
+		}
+		cookedNote = '';
+		savingCook = false;
+	}
+
+	async function removeCooked(id: string) {
+		if (!data.supabase || !data.user) return;
+		await persistTimelineDelete(data.supabase, data.user.id, id);
+	}
+
+	async function addComment(body: string) {
+		if (!data.supabase || !data.user || !recipe) return;
+		commentBusy = true;
+		const now = nowIso();
+		await persistRecipeCommentAdd(data.supabase, data.user.id, {
+			id: crypto.randomUUID(),
+			recipe_id: recipe.id,
+			user_id: data.user.id,
+			body,
+			created_at: now,
+			updated_at: now
+		});
+		commentBusy = false;
+	}
+
+	async function removeComment(id: string) {
+		if (!data.supabase || !data.user) return;
+		await persistRecipeCommentDelete(data.supabase, data.user.id, id);
+	}
 
 	async function addToList() {
 		if (!data.supabase || !data.user || !recipe) return;
@@ -114,6 +197,26 @@
 				<h1 class="mt-2 text-3xl font-semibold tracking-tight">{recipe.title}</h1>
 				{#if recipe.description}
 					<p class="mt-2 max-w-2xl text-fog">{recipe.description}</p>
+				{/if}
+				<div class="mt-3 flex flex-wrap items-center gap-3">
+					<StarRating value={myRating} onchange={(next) => void setRating(next)} />
+					<p class="text-sm text-fog">
+						{detail.timeline[0]
+							? fill(t.recipes.lastCooked, {
+									date: formatDay(detail.timeline[0].cooked_at, i18n.locale)
+								})
+							: t.recipes.neverCooked}
+					</p>
+				</div>
+				{#if detail.cookbooks.length > 0}
+					<div class="mt-3 flex flex-wrap gap-2">
+						{#each detail.cookbooks as cookbook (cookbook.id)}
+							<a
+								class="rounded-full border border-line px-3 py-1 text-sm text-gold"
+								href={resolve(`/app/recipes/cookbooks/${cookbook.id}`)}>{cookbook.title}</a
+							>
+						{/each}
+					</div>
 				{/if}
 			</div>
 			<div class="flex flex-wrap gap-2">
@@ -239,5 +342,66 @@
 				</a>
 			{/if}
 		</section>
+
+		<section class={[panelClass, 'space-y-4 p-5']}>
+			<h2 class="text-lg font-semibold">{t.recipes.cooked}</h2>
+			<label class="block space-y-2 text-sm">
+				<span>{t.recipes.cookedWhen}</span>
+				<input class={fieldClass} type="date" bind:value={cookedOn} />
+			</label>
+			<div class="space-y-2">
+				<p class="text-sm">{t.recipes.rating}</p>
+				<StarRating bind:value={cookedRating} />
+			</div>
+			<label class="block space-y-2 text-sm">
+				<span>{t.recipes.cookedNote}</span>
+				<textarea class={[fieldClass, 'min-h-20']} bind:value={cookedNote}></textarea>
+			</label>
+			<button
+				class={btnPrimary}
+				disabled={savingCook}
+				type="button"
+				onclick={() => void addCooked()}
+			>
+				{savingCook ? t.recipes.cookedSaving : t.recipes.cookedSave}
+			</button>
+			{#if detail.timeline.length > 0}
+				<ol class="space-y-2">
+					{#each detail.timeline as event (event.id)}
+						<li class="rounded-2xl border border-line px-4 py-3">
+							<p class="text-sm font-semibold">
+								{formatDay(event.cooked_at, i18n.locale)}
+								{#if memberName(snap, event.user_id)}
+									· {memberName(snap, event.user_id)}
+								{/if}
+							</p>
+							{#if event.rating}
+								<StarRating value={event.rating} readonly />
+							{/if}
+							{#if event.note}
+								<p class="mt-1 text-sm text-fog">{event.note}</p>
+							{/if}
+							{#if event.user_id === data.user?.id}
+								<button
+									class="mt-2 text-sm font-semibold text-coral"
+									type="button"
+									onclick={() => void removeCooked(event.id)}>{t.recipes.delete}</button
+								>
+							{/if}
+						</li>
+					{/each}
+				</ol>
+			{/if}
+		</section>
+
+		{#if data.user}
+			<CommentThread
+				{comments}
+				userId={data.user.id}
+				submitting={commentBusy}
+				onsubmit={(body) => void addComment(body)}
+				ondelete={(id) => void removeComment(id)}
+			/>
+		{/if}
 	</div>
 {/if}

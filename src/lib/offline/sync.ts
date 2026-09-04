@@ -15,6 +15,9 @@ import {
 import { nextFrontSortOrder, type OrderPatch } from '$lib/sort';
 import type { BasementClient } from '$lib/supabase/client';
 import type {
+	Cookbook,
+	CookbookComment,
+	CookbookRecipe,
 	Household,
 	HouseholdInvite,
 	ItemCatalog,
@@ -22,8 +25,11 @@ import type {
 	Member,
 	Profile,
 	Recipe,
+	RecipeComment,
 	RecipeIngredient,
+	RecipeRating,
 	RecipeStep,
+	RecipeTimelineEvent,
 	ShoppingList
 } from '$lib/types/app';
 
@@ -40,6 +46,12 @@ export type OfflineSnapshot = {
 	recipes: Recipe[];
 	recipeIngredients: RecipeIngredient[];
 	recipeSteps: RecipeStep[];
+	cookbooks: Cookbook[];
+	cookbookRecipes: CookbookRecipe[];
+	recipeRatings: RecipeRating[];
+	recipeTimeline: RecipeTimelineEvent[];
+	recipeComments: RecipeComment[];
+	cookbookComments: CookbookComment[];
 };
 
 export type OutboxPayload =
@@ -61,7 +73,16 @@ export type OutboxPayload =
 	| { kind: 'itemsReorder'; updates: OrderPatch[]; updated_at: string }
 	| { kind: 'householdUpdate'; householdId: string; patch: Partial<Household> }
 	| { kind: 'recipeUpsert'; recipe: Recipe; ingredients: RecipeIngredient[]; steps: RecipeStep[] }
-	| { kind: 'recipeDelete'; recipeId: string; imagePath?: string };
+	| { kind: 'recipeDelete'; recipeId: string; imagePath?: string }
+	| { kind: 'cookbookUpsert'; cookbook: Cookbook; recipeIds: string[] }
+	| { kind: 'cookbookDelete'; cookbookId: string }
+	| { kind: 'ratingUpsert'; rating: RecipeRating }
+	| { kind: 'timelineAdd'; event: RecipeTimelineEvent }
+	| { kind: 'timelineDelete'; eventId: string }
+	| { kind: 'recipeCommentAdd'; comment: RecipeComment }
+	| { kind: 'recipeCommentDelete'; commentId: string }
+	| { kind: 'cookbookCommentAdd'; comment: CookbookComment }
+	| { kind: 'cookbookCommentDelete'; commentId: string };
 
 const SNAP_KEY = 'snapshot';
 
@@ -78,7 +99,13 @@ export function emptySnapshot(userId: string, profile: Profile): OfflineSnapshot
 		catalog: [],
 		recipes: [],
 		recipeIngredients: [],
-		recipeSteps: []
+		recipeSteps: [],
+		cookbooks: [],
+		cookbookRecipes: [],
+		recipeRatings: [],
+		recipeTimeline: [],
+		recipeComments: [],
+		cookbookComments: []
 	};
 }
 
@@ -94,7 +121,13 @@ function hydrateSnapshot(snap: OfflineSnapshot): OfflineSnapshot {
 		catalog: snap.catalog.map((row) => ({ ...row, category: row.category ?? '' })),
 		recipes: (snap.recipes ?? []).map(hydrateRecipe),
 		recipeIngredients: (snap.recipeIngredients ?? []).map(hydrateIngredient),
-		recipeSteps: snap.recipeSteps ?? []
+		recipeSteps: snap.recipeSteps ?? [],
+		cookbooks: snap.cookbooks ?? [],
+		cookbookRecipes: snap.cookbookRecipes ?? [],
+		recipeRatings: snap.recipeRatings ?? [],
+		recipeTimeline: snap.recipeTimeline ?? [],
+		recipeComments: snap.recipeComments ?? [],
+		cookbookComments: snap.cookbookComments ?? []
 	};
 }
 
@@ -232,6 +265,51 @@ function applyOutbox(snap: OfflineSnapshot, payloads: OutboxPayload[]): OfflineS
 			next = applyRecipeBundle(next, payload.recipe, payload.ingredients, payload.steps);
 		} else if (payload.kind === 'recipeDelete') {
 			next = removeRecipeFromSnap(next, payload.recipeId);
+		} else if (payload.kind === 'cookbookUpsert') {
+			next = applyCookbook(next, payload.cookbook, payload.recipeIds);
+		} else if (payload.kind === 'cookbookDelete') {
+			next = removeCookbookFromSnap(next, payload.cookbookId);
+		} else if (payload.kind === 'ratingUpsert') {
+			next = applyRating(next, payload.rating);
+		} else if (payload.kind === 'timelineAdd') {
+			next = {
+				...next,
+				recipeTimeline: [
+					payload.event,
+					...next.recipeTimeline.filter((row) => row.id !== payload.event.id)
+				]
+			};
+		} else if (payload.kind === 'timelineDelete') {
+			next = {
+				...next,
+				recipeTimeline: next.recipeTimeline.filter((row) => row.id !== payload.eventId)
+			};
+		} else if (payload.kind === 'recipeCommentAdd') {
+			next = {
+				...next,
+				recipeComments: [
+					payload.comment,
+					...next.recipeComments.filter((row) => row.id !== payload.comment.id)
+				]
+			};
+		} else if (payload.kind === 'recipeCommentDelete') {
+			next = {
+				...next,
+				recipeComments: next.recipeComments.filter((row) => row.id !== payload.commentId)
+			};
+		} else if (payload.kind === 'cookbookCommentAdd') {
+			next = {
+				...next,
+				cookbookComments: [
+					payload.comment,
+					...next.cookbookComments.filter((row) => row.id !== payload.comment.id)
+				]
+			};
+		} else if (payload.kind === 'cookbookCommentDelete') {
+			next = {
+				...next,
+				cookbookComments: next.cookbookComments.filter((row) => row.id !== payload.commentId)
+			};
 		}
 	}
 	return next;
@@ -254,12 +332,56 @@ function applyRecipeBundle(
 	};
 }
 
+function applyCookbook(
+	snap: OfflineSnapshot,
+	cookbook: Cookbook,
+	recipeIds: string[]
+): OfflineSnapshot {
+	return {
+		...snap,
+		cookbooks: [cookbook, ...snap.cookbooks.filter((row) => row.id !== cookbook.id)],
+		cookbookRecipes: [
+			...recipeIds.map((recipeId, index) => ({
+				cookbook_id: cookbook.id,
+				recipe_id: recipeId,
+				sort_order: index
+			})),
+			...snap.cookbookRecipes.filter((row) => row.cookbook_id !== cookbook.id)
+		]
+	};
+}
+
+function removeCookbookFromSnap(snap: OfflineSnapshot, cookbookId: string): OfflineSnapshot {
+	return {
+		...snap,
+		cookbooks: snap.cookbooks.filter((row) => row.id !== cookbookId),
+		cookbookRecipes: snap.cookbookRecipes.filter((row) => row.cookbook_id !== cookbookId),
+		cookbookComments: snap.cookbookComments.filter((row) => row.cookbook_id !== cookbookId)
+	};
+}
+
+function applyRating(snap: OfflineSnapshot, rating: RecipeRating): OfflineSnapshot {
+	return {
+		...snap,
+		recipeRatings: [
+			rating,
+			...snap.recipeRatings.filter(
+				(row) => !(row.recipe_id === rating.recipe_id && row.user_id === rating.user_id)
+			)
+		]
+	};
+}
+
 function removeRecipeFromSnap(snap: OfflineSnapshot, recipeId: string): OfflineSnapshot {
 	return {
 		...snap,
 		recipes: snap.recipes.filter((row) => row.id !== recipeId),
 		recipeIngredients: snap.recipeIngredients.filter((row) => row.recipe_id !== recipeId),
-		recipeSteps: snap.recipeSteps.filter((row) => row.recipe_id !== recipeId)
+		recipeSteps: snap.recipeSteps.filter((row) => row.recipe_id !== recipeId),
+		cookbookRecipes: snap.cookbookRecipes.filter((row) => row.recipe_id !== recipeId),
+		recipeRatings: snap.recipeRatings.filter((row) => row.recipe_id !== recipeId),
+		recipeTimeline: snap.recipeTimeline.filter((row) => row.recipe_id !== recipeId),
+		recipeComments: snap.recipeComments.filter((row) => row.recipe_id !== recipeId)
 	};
 }
 
@@ -319,6 +441,12 @@ export async function pullSnapshot(
 		recipes,
 		recipeIngredients,
 		recipeSteps,
+		cookbooks,
+		cookbookRecipes,
+		recipeRatings,
+		recipeTimeline,
+		recipeComments,
+		cookbookComments,
 		profileRow
 	] = await Promise.all([
 		fetchAllRows<Household>((from, to) =>
@@ -387,6 +515,44 @@ export async function pullSnapshot(
 				.order('sort_order', { ascending: true })
 				.range(from, to)
 		),
+		fetchAllRows<Cookbook>((from, to) =>
+			supabase
+				.from('cookbooks')
+				.select('*')
+				.order('updated_at', { ascending: false })
+				.range(from, to)
+		),
+		fetchAllRows<CookbookRecipe>((from, to) =>
+			supabase
+				.from('cookbook_recipes')
+				.select('*')
+				.order('sort_order', { ascending: true })
+				.range(from, to)
+		),
+		fetchAllRows<RecipeRating>((from, to) =>
+			supabase.from('recipe_ratings').select('*').range(from, to)
+		),
+		fetchAllRows<RecipeTimelineEvent>((from, to) =>
+			supabase
+				.from('recipe_timeline')
+				.select('*')
+				.order('cooked_at', { ascending: false })
+				.range(from, to)
+		),
+		fetchAllRows<RecipeComment>((from, to) =>
+			supabase
+				.from('recipe_comments')
+				.select('*')
+				.order('created_at', { ascending: false })
+				.range(from, to)
+		),
+		fetchAllRows<CookbookComment>((from, to) =>
+			supabase
+				.from('cookbook_comments')
+				.select('*')
+				.order('created_at', { ascending: false })
+				.range(from, to)
+		),
 		supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
 	]);
 
@@ -422,7 +588,13 @@ export async function pullSnapshot(
 		catalog,
 		recipes: recipes.map((row) => ({ ...row, image_url: imageUrls.get(row.image_path) ?? '' })),
 		recipeIngredients,
-		recipeSteps
+		recipeSteps,
+		cookbooks,
+		cookbookRecipes,
+		recipeRatings,
+		recipeTimeline,
+		recipeComments,
+		cookbookComments
 	});
 	const merged = await snapshotWithOutbox(next);
 	publishProfile(merged.profile);
@@ -552,6 +724,48 @@ async function pushPayload(supabase: BasementClient, payload: OutboxPayload) {
 		if (payload.imagePath) {
 			await supabase.storage.from('recipe-images').remove([payload.imagePath]);
 		}
+	} else if (payload.kind === 'cookbookUpsert') {
+		const { error: cookbookError } = await supabase.from('cookbooks').upsert(payload.cookbook);
+		if (cookbookError) throw cookbookError;
+		const { error: clearLinks } = await supabase
+			.from('cookbook_recipes')
+			.delete()
+			.eq('cookbook_id', payload.cookbook.id);
+		if (clearLinks) throw clearLinks;
+		if (payload.recipeIds.length > 0) {
+			const { error } = await supabase.from('cookbook_recipes').insert(
+				payload.recipeIds.map((recipeId, index) => ({
+					cookbook_id: payload.cookbook.id,
+					recipe_id: recipeId,
+					sort_order: index
+				}))
+			);
+			if (error) throw error;
+		}
+	} else if (payload.kind === 'cookbookDelete') {
+		const { error } = await supabase.from('cookbooks').delete().eq('id', payload.cookbookId);
+		if (error) throw error;
+	} else if (payload.kind === 'ratingUpsert') {
+		const { error } = await supabase.from('recipe_ratings').upsert(payload.rating);
+		if (error) throw error;
+	} else if (payload.kind === 'timelineAdd') {
+		const { error } = await supabase.from('recipe_timeline').insert(payload.event);
+		if (error) throw error;
+	} else if (payload.kind === 'timelineDelete') {
+		const { error } = await supabase.from('recipe_timeline').delete().eq('id', payload.eventId);
+		if (error) throw error;
+	} else if (payload.kind === 'recipeCommentAdd') {
+		const { error } = await supabase.from('recipe_comments').insert(payload.comment);
+		if (error) throw error;
+	} else if (payload.kind === 'recipeCommentDelete') {
+		const { error } = await supabase.from('recipe_comments').delete().eq('id', payload.commentId);
+		if (error) throw error;
+	} else if (payload.kind === 'cookbookCommentAdd') {
+		const { error } = await supabase.from('cookbook_comments').insert(payload.comment);
+		if (error) throw error;
+	} else if (payload.kind === 'cookbookCommentDelete') {
+		const { error } = await supabase.from('cookbook_comments').delete().eq('id', payload.commentId);
+		if (error) throw error;
 	}
 }
 
@@ -796,6 +1010,106 @@ export async function persistRecipeDelete(
 	await pushOrQueue(supabase, { kind: 'recipeDelete', recipeId, imagePath });
 }
 
+export async function persistCookbookUpsert(
+	supabase: BasementClient,
+	userId: string,
+	cookbook: Cookbook,
+	recipeIds: string[]
+) {
+	await mutateSnapshot(userId, (snap) => applyCookbook(snap, cookbook, recipeIds));
+	await pushOrQueue(supabase, { kind: 'cookbookUpsert', cookbook, recipeIds });
+}
+
+export async function persistCookbookDelete(
+	supabase: BasementClient,
+	userId: string,
+	cookbookId: string
+) {
+	await mutateSnapshot(userId, (snap) => removeCookbookFromSnap(snap, cookbookId));
+	await pushOrQueue(supabase, { kind: 'cookbookDelete', cookbookId });
+}
+
+export async function persistRatingUpsert(
+	supabase: BasementClient,
+	userId: string,
+	rating: RecipeRating
+) {
+	await mutateSnapshot(userId, (snap) => applyRating(snap, rating));
+	await pushOrQueue(supabase, { kind: 'ratingUpsert', rating });
+}
+
+export async function persistTimelineAdd(
+	supabase: BasementClient,
+	userId: string,
+	event: RecipeTimelineEvent
+) {
+	await mutateSnapshot(userId, (snap) => ({
+		...snap,
+		recipeTimeline: [event, ...snap.recipeTimeline.filter((row) => row.id !== event.id)]
+	}));
+	await pushOrQueue(supabase, { kind: 'timelineAdd', event });
+}
+
+export async function persistTimelineDelete(
+	supabase: BasementClient,
+	userId: string,
+	eventId: string
+) {
+	await mutateSnapshot(userId, (snap) => ({
+		...snap,
+		recipeTimeline: snap.recipeTimeline.filter((row) => row.id !== eventId)
+	}));
+	await pushOrQueue(supabase, { kind: 'timelineDelete', eventId });
+}
+
+export async function persistRecipeCommentAdd(
+	supabase: BasementClient,
+	userId: string,
+	comment: RecipeComment
+) {
+	await mutateSnapshot(userId, (snap) => ({
+		...snap,
+		recipeComments: [comment, ...snap.recipeComments.filter((row) => row.id !== comment.id)]
+	}));
+	await pushOrQueue(supabase, { kind: 'recipeCommentAdd', comment });
+}
+
+export async function persistRecipeCommentDelete(
+	supabase: BasementClient,
+	userId: string,
+	commentId: string
+) {
+	await mutateSnapshot(userId, (snap) => ({
+		...snap,
+		recipeComments: snap.recipeComments.filter((row) => row.id !== commentId)
+	}));
+	await pushOrQueue(supabase, { kind: 'recipeCommentDelete', commentId });
+}
+
+export async function persistCookbookCommentAdd(
+	supabase: BasementClient,
+	userId: string,
+	comment: CookbookComment
+) {
+	await mutateSnapshot(userId, (snap) => ({
+		...snap,
+		cookbookComments: [comment, ...snap.cookbookComments.filter((row) => row.id !== comment.id)]
+	}));
+	await pushOrQueue(supabase, { kind: 'cookbookCommentAdd', comment });
+}
+
+export async function persistCookbookCommentDelete(
+	supabase: BasementClient,
+	userId: string,
+	commentId: string
+) {
+	await mutateSnapshot(userId, (snap) => ({
+		...snap,
+		cookbookComments: snap.cookbookComments.filter((row) => row.id !== commentId)
+	}));
+	await pushOrQueue(supabase, { kind: 'cookbookCommentDelete', commentId });
+}
+
 export async function persistRecipeToList(
 	supabase: BasementClient,
 	userId: string,
@@ -949,5 +1263,55 @@ export function recipeDetail(snap: OfflineSnapshot, recipeId: string) {
 	const steps = snap.recipeSteps
 		.filter((row) => row.recipe_id === recipeId)
 		.sort((a, b) => a.sort_order - b.sort_order);
-	return { recipe, ingredients, steps };
+	const comments = snap.recipeComments
+		.filter((row) => row.recipe_id === recipeId)
+		.sort((a, b) => b.created_at.localeCompare(a.created_at));
+	const timeline = snap.recipeTimeline
+		.filter((row) => row.recipe_id === recipeId)
+		.sort((a, b) => b.cooked_at.localeCompare(a.cooked_at));
+	const ratings = snap.recipeRatings.filter((row) => row.recipe_id === recipeId);
+	const cookbooks = snap.cookbooks
+		.filter((cookbook) =>
+			snap.cookbookRecipes.some(
+				(link) => link.cookbook_id === cookbook.id && link.recipe_id === recipeId
+			)
+		)
+		.sort((a, b) => a.title.localeCompare(b.title));
+	return { recipe, ingredients, steps, comments, timeline, ratings, cookbooks };
+}
+
+export function cookbooksForHousehold(snap: OfflineSnapshot, householdId?: string) {
+	return snap.cookbooks
+		.filter((cookbook) => !householdId || cookbook.household_id === householdId)
+		.sort((a, b) => b.updated_at.localeCompare(a.updated_at) || a.title.localeCompare(b.title));
+}
+
+export function cookbookDetail(snap: OfflineSnapshot, cookbookId: string) {
+	const cookbook = snap.cookbooks.find((row) => row.id === cookbookId) ?? null;
+	const recipeIds = snap.cookbookRecipes
+		.filter((row) => row.cookbook_id === cookbookId)
+		.sort((a, b) => a.sort_order - b.sort_order)
+		.map((row) => row.recipe_id);
+	const recipes = recipeIds
+		.map((id) => snap.recipes.find((recipe) => recipe.id === id))
+		.filter((recipe): recipe is Recipe => Boolean(recipe));
+	const comments = snap.cookbookComments
+		.filter((row) => row.cookbook_id === cookbookId)
+		.sort((a, b) => b.created_at.localeCompare(a.created_at));
+	return { cookbook, recipes, recipeIds, comments };
+}
+
+export function householdTimeline(snap: OfflineSnapshot, householdId?: string) {
+	return snap.recipeTimeline
+		.filter((event) => !householdId || event.household_id === householdId)
+		.sort((a, b) => b.cooked_at.localeCompare(a.cooked_at));
+}
+
+export function averageRating(ratings: RecipeRating[]) {
+	if (ratings.length === 0) return null;
+	return ratings.reduce((sum, row) => sum + row.rating, 0) / ratings.length;
+}
+
+export function userRating(ratings: RecipeRating[], userId: string) {
+	return ratings.find((row) => row.user_id === userId)?.rating ?? 0;
 }

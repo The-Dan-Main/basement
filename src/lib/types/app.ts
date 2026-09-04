@@ -12,6 +12,15 @@ export type {
 	ShoppingList
 } from '$lib/types/database.types';
 
+export type {
+	Cookbook,
+	CookbookComment,
+	CookbookRecipe,
+	RecipeComment,
+	RecipeRating,
+	RecipeTimelineEvent
+} from '$lib/types/database.types';
+
 export type Recipe = RecipeRow & { image_url?: string };
 
 export type Member = {

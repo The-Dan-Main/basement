@@ -62,6 +62,8 @@
 				fat_g: asNumber(value.fat_g),
 				protein_g: asNumber(value.protein_g),
 				fiber_g: asNumber(value.fiber_g),
+				source: detail.recipe.source,
+				sourceKey: detail.recipe.source_key,
 				ingredients: value.ingredients.map((row) => ({
 					name: row.name,
 					amount: parseAmountInput(row.amount),

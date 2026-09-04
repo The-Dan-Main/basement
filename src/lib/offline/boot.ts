@@ -61,7 +61,11 @@ export async function bootOffline(
 				'/app/household',
 				'/app/settings',
 				...snap.lists.map((list) => `/app/lists/${list.id}`),
-				...snap.recipes.map((recipe) => `/app/recipes/${recipe.id}`)
+				...snap.recipes.map((recipe) => `/app/recipes/${recipe.id}`),
+				...snap.cookbooks.map((cookbook) => `/app/recipes/cookbooks/${cookbook.id}`),
+				'/app/recipes/import',
+				'/app/recipes/cookbooks',
+				'/app/recipes/timeline'
 			];
 			await Promise.allSettled(paths.map((path) => preloadCode(path)));
 			await Promise.allSettled(paths.slice(0, 8).map((path) => preloadData(path)));

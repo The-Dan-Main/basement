@@ -85,6 +85,8 @@ export type RecipeRow = {
 	fat_g: number;
 	protein_g: number;
 	fiber_g: number;
+	source: string;
+	source_key: string;
 	created_by: string;
 	created_at: string;
 	updated_at: string;
@@ -106,6 +108,59 @@ export type RecipeStepRow = {
 	recipe_id: string;
 	instruction: string;
 	sort_order: number;
+};
+
+export type CookbookRow = {
+	id: string;
+	household_id: string;
+	title: string;
+	description: string;
+	created_by: string;
+	created_at: string;
+	updated_at: string;
+};
+
+export type CookbookRecipeRow = {
+	cookbook_id: string;
+	recipe_id: string;
+	sort_order: number;
+};
+
+export type RecipeRatingRow = {
+	recipe_id: string;
+	user_id: string;
+	rating: number;
+	updated_at: string;
+};
+
+export type RecipeTimelineRow = {
+	id: string;
+	recipe_id: string;
+	household_id: string;
+	user_id: string;
+	event_type: 'cooked';
+	cooked_at: string;
+	rating: number | null;
+	note: string;
+	created_at: string;
+};
+
+export type RecipeCommentRow = {
+	id: string;
+	recipe_id: string;
+	user_id: string;
+	body: string;
+	created_at: string;
+	updated_at: string;
+};
+
+export type CookbookCommentRow = {
+	id: string;
+	cookbook_id: string;
+	user_id: string;
+	body: string;
+	created_at: string;
+	updated_at: string;
 };
 
 type Table<Row, Insert = Partial<Row> & Record<string, never>, Update = Partial<Row>> = {
@@ -208,6 +263,8 @@ export interface Database {
 					fat_g?: number;
 					protein_g?: number;
 					fiber_g?: number;
+					source?: string;
+					source_key?: string;
 					created_at?: string;
 					updated_at?: string;
 				},
@@ -237,6 +294,68 @@ export interface Database {
 				},
 				Partial<RecipeStepRow>
 			>;
+			cookbooks: Table<
+				CookbookRow,
+				{
+					household_id: string;
+					title: string;
+					created_by: string;
+					id?: string;
+					description?: string;
+					created_at?: string;
+					updated_at?: string;
+				},
+				Partial<CookbookRow>
+			>;
+			cookbook_recipes: Table<
+				CookbookRecipeRow,
+				{ cookbook_id: string; recipe_id: string; sort_order?: number },
+				Partial<CookbookRecipeRow>
+			>;
+			recipe_ratings: Table<
+				RecipeRatingRow,
+				{ recipe_id: string; user_id: string; rating: number; updated_at?: string },
+				Partial<RecipeRatingRow>
+			>;
+			recipe_timeline: Table<
+				RecipeTimelineRow,
+				{
+					recipe_id: string;
+					household_id: string;
+					user_id: string;
+					id?: string;
+					event_type?: RecipeTimelineRow['event_type'];
+					cooked_at?: string;
+					rating?: number | null;
+					note?: string;
+					created_at?: string;
+				},
+				Partial<RecipeTimelineRow>
+			>;
+			recipe_comments: Table<
+				RecipeCommentRow,
+				{
+					recipe_id: string;
+					user_id: string;
+					body: string;
+					id?: string;
+					created_at?: string;
+					updated_at?: string;
+				},
+				Partial<RecipeCommentRow>
+			>;
+			cookbook_comments: Table<
+				CookbookCommentRow,
+				{
+					cookbook_id: string;
+					user_id: string;
+					body: string;
+					id?: string;
+					created_at?: string;
+					updated_at?: string;
+				},
+				Partial<CookbookCommentRow>
+			>;
 		};
 		Views: Record<never, never>;
 		Functions: Record<never, never>;
@@ -255,3 +374,9 @@ export type ItemCatalog = ItemCatalogRow;
 export type Recipe = RecipeRow;
 export type RecipeIngredient = RecipeIngredientRow;
 export type RecipeStep = RecipeStepRow;
+export type Cookbook = CookbookRow;
+export type CookbookRecipe = CookbookRecipeRow;
+export type RecipeRating = RecipeRatingRow;
+export type RecipeTimelineEvent = RecipeTimelineRow;
+export type RecipeComment = RecipeCommentRow;
+export type CookbookComment = CookbookCommentRow;
