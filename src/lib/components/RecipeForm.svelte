@@ -4,7 +4,7 @@
 	import { getI18n } from '$lib/i18n/i18n.svelte';
 	import { fill } from '$lib/i18n/locales';
 	import { RECIPE_UNITS } from '$lib/recipes';
-	import { btnGhost, btnPrimary, fieldClass, panelClass, selectClass } from '$lib/ui';
+	import { btnGhost, btnPrimary, fieldClass, labelClass, panelClass, selectClass } from '$lib/ui';
 	import type { Recipe, RecipeIngredient, RecipeStep } from '$lib/types/app';
 	import { untrack } from 'svelte';
 
@@ -146,7 +146,7 @@
 	}}
 >
 	<section class="space-y-4">
-		<label class="block space-y-2 text-sm">
+		<label class={labelClass}>
 			<span>{t.recipes.titleLabel}</span>
 			<input
 				class={fieldClass}
@@ -156,15 +156,15 @@
 				required
 			/>
 		</label>
-		<label class="block space-y-2 text-sm">
+		<label class={labelClass}>
 			<span>{t.recipes.description}</span>
 			<textarea
 				class={[fieldClass, 'min-h-24']}
 				bind:value={description}
 				placeholder={t.recipes.descriptionPlaceholder}></textarea>
 		</label>
-		<div class="space-y-2">
-			<p class="text-sm">{t.recipes.servings}</p>
+		<div class={labelClass}>
+			<p>{t.recipes.servings}</p>
 			<ServingsStepper bind:value={servings} />
 			<p class="text-sm text-fog">{t.recipes.servingsHelp}</p>
 		</div>
@@ -198,19 +198,19 @@
 			<p class="mt-1 text-sm text-fog">{t.recipes.nutritionHelp}</p>
 		</div>
 		<div class="grid gap-3 sm:grid-cols-2">
-			<label class="block space-y-2 text-sm">
+			<label class={labelClass}>
 				<span>{t.recipes.calories} ({t.recipes.kcal})</span>
 				<input class={fieldClass} type="number" min="0" step="any" bind:value={calories} />
 			</label>
-			<label class="block space-y-2 text-sm">
+			<label class={labelClass}>
 				<span>{t.recipes.fat} ({t.recipes.grams})</span>
 				<input class={fieldClass} type="number" min="0" step="any" bind:value={fat} />
 			</label>
-			<label class="block space-y-2 text-sm">
+			<label class={labelClass}>
 				<span>{t.recipes.protein} ({t.recipes.grams})</span>
 				<input class={fieldClass} type="number" min="0" step="any" bind:value={protein} />
 			</label>
-			<label class="block space-y-2 text-sm">
+			<label class={labelClass}>
 				<span>{t.recipes.fiber} ({t.recipes.grams})</span>
 				<input class={fieldClass} type="number" min="0" step="any" bind:value={fiber} />
 			</label>
@@ -258,7 +258,7 @@
 		<h2 class="text-lg font-semibold">{t.recipes.steps}</h2>
 		{#each stepRows as row, index (row.key)}
 			<div class="space-y-2">
-				<label class="block space-y-2 text-sm">
+				<label class={labelClass}>
 					<span>{fill(t.recipes.step, { n: index + 1 })}</span>
 					<textarea
 						class={[fieldClass, 'min-h-24']}

@@ -5,7 +5,7 @@
 	import { getI18n } from '$lib/i18n/i18n.svelte';
 	import { resolveSnapshot } from '$lib/offline/live.svelte';
 	import { cookbookDetail, persistCookbookUpsert, recipesForHousehold } from '$lib/offline/sync';
-	import { btnPrimary, fieldClass } from '$lib/ui';
+	import { btnPrimary, fieldClass, labelClass } from '$lib/ui';
 	import { untrack } from 'svelte';
 
 	let { data } = $props();
@@ -67,11 +67,11 @@
 			void save();
 		}}
 	>
-		<label class="block space-y-2 text-sm">
+		<label class={labelClass}>
 			<span>{t.recipes.titleLabel}</span>
 			<input class={fieldClass} bind:value={title} maxlength="120" required />
 		</label>
-		<label class="block space-y-2 text-sm">
+		<label class={labelClass}>
 			<span>{t.recipes.description}</span>
 			<textarea class={[fieldClass, 'min-h-24']} bind:value={description}></textarea>
 		</label>

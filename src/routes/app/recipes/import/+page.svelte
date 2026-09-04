@@ -11,7 +11,7 @@
 		type MealieRecipeDraft
 	} from '$lib/mealie';
 	import { resolveSnapshot } from '$lib/offline/live.svelte';
-	import { btnGhost, btnPrimary, fieldClass, panelClass } from '$lib/ui';
+	import { btnGhost, btnPrimary, fieldClass, labelClass, panelClass } from '$lib/ui';
 
 	let { data } = $props();
 	const i18n = getI18n();
@@ -157,11 +157,11 @@
 	<section class={[panelClass, 'space-y-4 p-5']}>
 		<h2 class="text-lg font-semibold">{t.recipes.importApi}</h2>
 		<p class="text-sm text-fog">{t.recipes.importApiHelp}</p>
-		<label class="block space-y-2 text-sm">
+		<label class={labelClass}>
 			<span>{t.recipes.importApiUrl}</span>
 			<input class={fieldClass} bind:value={baseUrl} placeholder="https://mealie.example.com" />
 		</label>
-		<label class="block space-y-2 text-sm">
+		<label class={labelClass}>
 			<span>{t.recipes.importApiToken}</span>
 			<input class={fieldClass} type="password" bind:value={token} autocomplete="off" />
 		</label>
