@@ -72,7 +72,7 @@
 
 <svelte:head><title>{t.dashboard.title}</title></svelte:head>
 
-<div class="min-w-0 space-y-8">
+<div class="min-w-0 max-w-full space-y-8">
 	<section>
 		<p class="text-sm text-fog">{fill(t.dashboard.hi, { name: data.profile.display_name })}</p>
 		<h1 class="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">{t.dashboard.heading}</h1>
@@ -163,8 +163,8 @@
 		{/if}
 	</section>
 
-	<section class="grid min-w-0 gap-6 lg:grid-cols-2">
-		<div class="min-w-0 space-y-3">
+	<section class="grid min-w-0 max-w-full gap-6 overflow-hidden lg:grid-cols-2">
+		<div class="min-w-0 max-w-full space-y-3">
 			<div class="flex min-w-0 flex-wrap items-end justify-between gap-x-3 gap-y-1">
 				<h2 class="min-w-0 text-lg font-semibold">{t.dashboard.lists}</h2>
 				<a class="shrink-0 text-sm font-semibold text-gold" href={resolve('/app/lists')}>{t.dashboard.openLists}</a>
@@ -178,7 +178,7 @@
 					{#each lists as list (list.id)}
 						<li class="min-w-0">
 							<a
-								class={[panelClass, 'flex min-w-0 w-full items-center justify-between gap-3 overflow-hidden p-4 hover:border-gold/40']}
+								class={[panelClass, 'flex w-full max-w-full min-w-0 items-center justify-between gap-3 overflow-hidden p-4 hover:border-gold/40']}
 								href={resolve(`/app/lists/${list.id}`)}
 							>
 								<p class="min-w-0 truncate font-semibold">
@@ -193,7 +193,7 @@
 				</ul>
 			{/if}
 		</div>
-		<div class="min-w-0 space-y-3">
+		<div class="min-w-0 max-w-full space-y-3">
 			<div class="flex min-w-0 flex-wrap items-end justify-between gap-x-3 gap-y-1">
 				<h2 class="min-w-0 text-lg font-semibold">{t.dashboard.recipes}</h2>
 				<a class="shrink-0 text-sm font-semibold text-gold" href={resolve('/app/recipes')}>{t.dashboard.openRecipes}</a>
@@ -209,7 +209,7 @@
 						{@const last = lastCookedEvent(snap, recipe.id)}
 						<li class="min-w-0">
 							<a
-								class={[panelClass, 'flex min-w-0 w-full gap-3 overflow-hidden hover:border-gold/40']}
+								class={[panelClass, 'flex w-full max-w-full min-w-0 gap-3 overflow-hidden hover:border-gold/40']}
 								href={resolve(`/app/recipes/${recipe.id}`)}
 							>
 								{#if recipe.image_url}

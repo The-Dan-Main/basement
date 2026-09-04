@@ -61,13 +61,13 @@
 <div class="min-h-dvh overflow-x-clip bg-ink">
 	<OfflineBanner />
 	<header
-		class="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-line/80 bg-ink/85 px-4 py-3 backdrop-blur-md md:px-6"
+		class="sticky top-0 z-30 flex min-w-0 items-center justify-between gap-3 overflow-x-clip border-b border-line/80 bg-ink/85 px-4 py-3 backdrop-blur-md md:px-6"
 		style="padding-top: max(0.75rem, env(safe-area-inset-top))"
 	>
-		<a href={resolve('/app')} class="text-paper"><Logo /></a>
-		<div class="flex items-center gap-2 text-sm">
+		<a href={resolve('/app')} class="min-w-0 shrink text-paper"><Logo /></a>
+		<div class="flex min-w-0 shrink-0 items-center gap-2 text-sm">
 			<LanguageSwitcher />
-			<span class="rounded-full bg-white/5 px-3 py-1 text-fog">{live.display_name}</span>
+			<span class="max-w-24 truncate rounded-full bg-white/5 px-3 py-1 text-fog">{live.display_name}</span>
 			<a
 				class="grid h-9 w-9 place-items-center rounded-full border border-line text-fog hover:text-paper md:hidden"
 				href={resolve('/app/settings')}
