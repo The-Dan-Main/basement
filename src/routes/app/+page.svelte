@@ -163,8 +163,8 @@
 		{/if}
 	</section>
 
-	<section class="grid min-w-0 max-w-full gap-6 overflow-hidden lg:grid-cols-2">
-		<div class="min-w-0 max-w-full space-y-3">
+	<section class="flex w-full min-w-0 flex-col gap-8 lg:grid lg:grid-cols-2 lg:gap-6">
+		<div class="min-w-0 space-y-3">
 			<div class="flex min-w-0 flex-wrap items-end justify-between gap-x-3 gap-y-1">
 				<h2 class="min-w-0 text-lg font-semibold">{t.dashboard.lists}</h2>
 				<a class="shrink-0 text-sm font-semibold text-gold" href={resolve('/app/lists')}>{t.dashboard.openLists}</a>
@@ -174,11 +174,14 @@
 					<p class="text-sm text-fog">{t.dashboard.listsEmpty}</p>
 				</section>
 			{:else}
-				<ul class="min-w-0 space-y-2">
+				<ul class="w-full min-w-0 space-y-2">
 					{#each lists as list (list.id)}
 						<li class="min-w-0">
 							<a
-								class={[panelClass, 'flex w-full max-w-full min-w-0 items-center justify-between gap-3 overflow-hidden p-4 hover:border-gold/40']}
+								class={[
+									panelClass,
+									'flex w-full min-w-0 items-center justify-between gap-3 overflow-hidden p-4 hover:border-gold/40'
+								]}
 								href={resolve(`/app/lists/${list.id}`)}
 							>
 								<p class="min-w-0 truncate font-semibold">
@@ -193,7 +196,7 @@
 				</ul>
 			{/if}
 		</div>
-		<div class="min-w-0 max-w-full space-y-3">
+		<div class="min-w-0 space-y-3">
 			<div class="flex min-w-0 flex-wrap items-end justify-between gap-x-3 gap-y-1">
 				<h2 class="min-w-0 text-lg font-semibold">{t.dashboard.recipes}</h2>
 				<a class="shrink-0 text-sm font-semibold text-gold" href={resolve('/app/recipes')}>{t.dashboard.openRecipes}</a>
@@ -203,13 +206,16 @@
 					<p class="text-sm text-fog">{t.dashboard.recipesEmpty}</p>
 				</section>
 			{:else}
-				<ul class="min-w-0 space-y-2">
+				<ul class="w-full min-w-0 space-y-2">
 					{#each recipes as recipe (recipe.id)}
 						{@const per = nutritionPerServing(recipe)}
 						{@const last = lastCookedEvent(snap, recipe.id)}
 						<li class="min-w-0">
 							<a
-								class={[panelClass, 'flex w-full max-w-full min-w-0 gap-3 overflow-hidden hover:border-gold/40']}
+								class={[
+									panelClass,
+									'flex w-full min-w-0 overflow-hidden hover:border-gold/40'
+								]}
 								href={resolve(`/app/recipes/${recipe.id}`)}
 							>
 								{#if recipe.image_url}
@@ -219,7 +225,7 @@
 										🍽️
 									</div>
 								{/if}
-								<div class="min-w-0 flex-1 py-3 pr-3">
+								<div class="min-w-0 flex-1 overflow-hidden py-3 pr-3">
 									<p class="truncate font-semibold">{recipe.title}</p>
 									<p class="truncate text-xs text-fog">
 										{#if recipe.calories}{formatNutrition(per.calories)} {t.recipes.kcal}{/if}
