@@ -34,6 +34,10 @@
 		medium: t.chores.medium,
 		heavy: t.chores.heavy
 	});
+
+	function setIntensity(next: ChoreIntensity) {
+		value.intensity = next;
+	}
 </script>
 
 <div class="space-y-5">
@@ -85,7 +89,8 @@
 							: 'border-line text-paper hover:border-gold/40'
 					]}
 					type="button"
-					onclick={() => (value = { ...value, intensity })}
+					aria-pressed={value.intensity === intensity}
+					onclick={() => setIntensity(intensity)}
 				>
 					<p class="font-semibold">{intensityLabel[intensity]}</p>
 					<p class="mt-1 text-xs text-fog">{fill(t.chores.points, { count: CHORE_POINTS[intensity] })}</p>
