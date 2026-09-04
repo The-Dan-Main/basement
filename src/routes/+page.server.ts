@@ -13,7 +13,8 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		'002_locale.sql',
 		'003_shopping_features.sql',
 		'004_recipes.sql',
-		'005_cookbooks_social.sql'
+		'005_cookbooks_social.sql',
+		'006_chores.sql'
 	];
 	const chunks = await Promise.all(
 		files.map((file) => readFile(path.join(migrations, file), 'utf8'))

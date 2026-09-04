@@ -29,6 +29,12 @@ function cookbookByTitle(snap: OfflineSnapshot, householdId: string, title: stri
 	);
 }
 
+function toCreatedAt(value: string | null) {
+	if (!value) return undefined;
+	const date = new Date(value);
+	return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
 export async function persistMealieDrafts(
 	supabase: BasementClient,
 	userId: string,
@@ -82,7 +88,7 @@ export async function persistMealieDrafts(
 				sourceKey: draft.sourceKey,
 				ingredients: draft.ingredients,
 				steps: draft.steps,
-				createdAt: existing?.created_at
+				createdAt: existing?.created_at ?? toCreatedAt(draft.createdAt)
 			});
 			await persistRecipeUpsert(supabase, userId, bundle.recipe, bundle.ingredients, bundle.steps);
 

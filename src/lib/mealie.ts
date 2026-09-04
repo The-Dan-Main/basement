@@ -179,6 +179,7 @@ export type MealieRecipeDraft = {
 	comments: MealieCommentDraft[];
 	image: MealieImageDraft | null;
 	sourceKey: string;
+	createdAt: string | null;
 };
 
 type Json = Record<string, unknown>;
@@ -341,7 +342,8 @@ export function mapMealieRecipe(
 		lastMade: asString(row.last_made) || asString(row.lastMade) || null,
 		comments: parseComments(row.comments),
 		image,
-		sourceKey: slug
+		sourceKey: slug,
+		createdAt: asString(row.date_added) || asString(row.created_at) || asString(row.createdAt) || null
 	};
 }
 

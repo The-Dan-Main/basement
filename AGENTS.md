@@ -7,6 +7,7 @@ These notes apply to every coding agent working in this repository (Cursor Cloud
 - Conventional commits (`feat`, `fix`, `chore`, `docs`, `refactor`, `test`).
 - English and German UI strings together in `src/lib/i18n/messages.ts`. The `de` object must match `en` exactly.
 - Offline-first: household data lives in the IndexedDB snapshot and outbox in `src/lib/offline/sync.ts`. New tables need types, pull, persist, outbox, and hydrate defaults so older snapshots still load.
+- Chores (`src/lib/chores.ts`) use frequency (every N weeks/months) and three intensities (light 5 / medium 10 / heavy 20). Completions award points and feed the household scoreboard.
 - Svelte 5 runes (`$state`, `$derived`, `$props`, `$bindable`). Do not use Svelte 4 `export let` or `on:click`.
 - Do not commit secrets. Environment values come from Cloud Agent secrets / `.env` (`PUBLIC_SUPABASE_*`, `SUPABASE_SERVICE_SECRET_KEY`, `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_ID`).
 

@@ -13,6 +13,8 @@ export type {
 } from '$lib/types/database.types';
 
 export type {
+	Chore,
+	ChoreCompletion,
 	Cookbook,
 	CookbookComment,
 	CookbookRecipe,

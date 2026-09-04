@@ -26,13 +26,23 @@
 	const links = $derived([
 		{
 			href: '/app' as const,
+			label: t.nav.home,
+			match: (value: string) => value === '/app'
+		},
+		{
+			href: '/app/lists' as const,
 			label: t.nav.lists,
-			match: (value: string) => value === '/app' || value.startsWith('/app/lists')
+			match: (value: string) => value.startsWith('/app/lists')
 		},
 		{
 			href: '/app/recipes' as const,
 			label: t.nav.recipes,
 			match: (value: string) => value.startsWith('/app/recipes')
+		},
+		{
+			href: '/app/chores' as const,
+			label: t.nav.chores,
+			match: (value: string) => value.startsWith('/app/chores')
 		},
 		{
 			href: '/app/household' as const,
@@ -107,14 +117,14 @@
 	</div>
 
 	<nav
-		class="fixed right-0 bottom-0 left-0 z-30 grid grid-cols-3 border-t border-line bg-ink/90 px-2 pt-2 backdrop-blur-md md:hidden"
+		class="fixed right-0 bottom-0 left-0 z-30 grid grid-cols-5 border-t border-line bg-ink/90 px-1 pt-2 backdrop-blur-md md:hidden"
 		style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom))"
 	>
 		{#each mobileLinks as link (link.href)}
 			<a
 				href={resolve(link.href)}
 				class={[
-					'rounded-2xl py-3 text-center text-sm font-semibold',
+					'rounded-2xl px-1 py-3 text-center text-xs font-semibold sm:text-sm',
 					link.match(path) ? 'text-gold' : 'text-fog'
 				]}
 			>

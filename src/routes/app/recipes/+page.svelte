@@ -5,7 +5,7 @@
 	import { getI18n } from '$lib/i18n/i18n.svelte';
 	import { fill, formatDay } from '$lib/i18n/locales';
 	import { resolveSnapshot } from '$lib/offline/live.svelte';
-	import { averageRating, recipesForHousehold } from '$lib/offline/sync';
+	import { averageRating, lastCookedEvent, recipesForHousehold } from '$lib/offline/sync';
 	import { formatNutrition, nutritionPerServing } from '$lib/recipes';
 	import { btnPrimary, panelClass } from '$lib/ui';
 
@@ -41,9 +41,7 @@
 				{@const per = nutritionPerServing(recipe)}
 				{@const ratings = snap.recipeRatings.filter((row) => row.recipe_id === recipe.id)}
 				{@const avg = averageRating(ratings)}
-				{@const last = snap.recipeTimeline
-					.filter((row) => row.recipe_id === recipe.id)
-					.sort((a, b) => b.cooked_at.localeCompare(a.cooked_at))[0]}
+				{@const last = lastCookedEvent(snap, recipe.id)}
 				<a
 					class={[panelClass, 'overflow-hidden transition hover:border-gold/40']}
 					href={resolve(`/app/recipes/${recipe.id}`)}

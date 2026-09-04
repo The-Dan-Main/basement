@@ -1,119 +1,216 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import EmojiPicker from '$lib/components/EmojiPicker.svelte';
-	import GripHandle from '$lib/components/GripHandle.svelte';
-	import SortableList from '$lib/components/SortableList.svelte';
+	import Scoreboard from '$lib/components/Scoreboard.svelte';
+	import StarRating from '$lib/components/StarRating.svelte';
+	import { choreStatuses, householdScores } from '$lib/chores';
 	import { nowIso } from '$lib/data';
 	import { getI18n } from '$lib/i18n/i18n.svelte';
-	import { fill } from '$lib/i18n/locales';
+	import { fill, formatDay } from '$lib/i18n/locales';
 	import { resolveSnapshot } from '$lib/offline/live.svelte';
-	import { listSummaries, persistListCreate, persistListsReorder } from '$lib/offline/sync';
-	import { nextFrontSortOrder, orderPatches } from '$lib/sort';
-	import { btnPrimary, fieldClass, panelClass } from '$lib/ui';
-	import type { ListSummary, ShoppingList } from '$lib/types/app';
+	import {
+		lastCookedEvent,
+		listSummaries,
+		memberName,
+		persistChoreComplete,
+		recipeFeed,
+		recipesForHousehold
+	} from '$lib/offline/sync';
+	import { formatNutrition, nutritionPerServing } from '$lib/recipes';
+	import { btnGhost, btnPrimary, panelClass } from '$lib/ui';
 
 	let { data } = $props();
 	const i18n = getI18n();
 	const t = $derived(i18n.t);
-	let name = $state('');
-	let emoji = $state('🛒');
-	let creating = $state(false);
-
 	const snap = $derived(resolveSnapshot(data.snap) ?? data.snap);
-	const lists = $derived(listSummaries(snap));
-	const defaultHousehold = $derived(snap.households[0] ?? null);
+	const household = $derived(snap.households[0] ?? null);
+	const lists = $derived(listSummaries(snap).slice(0, 4));
+	const recipes = $derived(recipesForHousehold(snap, household?.id).slice(0, 4));
+	const chores = $derived(choreStatuses(snap.chores, snap.choreCompletions, household?.id));
+	const due = $derived(chores.filter((row) => !row.done).slice(0, 5));
+	const scores = $derived(householdScores(snap.members, snap.choreCompletions, household?.id));
+	const recentCooks = $derived(recipeFeed(snap, household?.id, 'cooked').slice(0, 4));
+	let completing = $state('');
 
-	async function createList() {
-		const trimmed = name.trim();
-		if (!trimmed || !data.supabase || !data.user || !defaultHousehold) return;
-		creating = true;
-		const now = nowIso();
-		const list: ShoppingList = {
-			id: crypto.randomUUID(),
-			household_id: defaultHousehold.id,
-			name: trimmed,
-			emoji,
-			sort_order: nextFrontSortOrder(lists.map((row) => row.sort_order)),
-			archived_at: null,
-			created_by: data.user.id,
-			created_at: now,
-			updated_at: now
-		};
-		await persistListCreate(data.supabase, data.user.id, list);
-		name = '';
-		creating = false;
+	function frequencyLabel(unit: 'week' | 'month', every: number) {
+		if (unit === 'week') {
+			return every === 1 ? t.chores.everyWeek : fill(t.chores.everyWeeks, { count: every });
+		}
+		return every === 1 ? t.chores.everyMonth : fill(t.chores.everyMonths, { count: every });
 	}
 
-	async function reorderLists(ordered: ListSummary[]) {
-		if (!data.supabase || !data.user) return;
-		await persistListsReorder(data.supabase, data.user.id, orderPatches(ordered));
+	async function complete(choreId: string) {
+		if (!data.supabase || !data.user || !household) return;
+		const row = chores.find((item) => item.chore.id === choreId);
+		if (!row || row.done) return;
+		completing = choreId;
+		await persistChoreComplete(data.supabase, data.user.id, {
+			id: crypto.randomUUID(),
+			chore_id: row.chore.id,
+			household_id: household.id,
+			user_id: data.user.id,
+			completed_at: nowIso(),
+			period_key: row.periodKey,
+			points: row.chore.points
+		});
+		completing = '';
 	}
 </script>
 
-<svelte:head><title>{t.lists.title}</title></svelte:head>
+<svelte:head><title>{t.dashboard.title}</title></svelte:head>
 
 <div class="space-y-8">
+	<section>
+		<p class="text-sm text-fog">{fill(t.dashboard.hi, { name: data.profile.display_name })}</p>
+		<h1 class="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">{t.dashboard.heading}</h1>
+	</section>
+
 	<section class="space-y-3">
-		<p class="text-sm text-fog">{fill(t.lists.hi, { name: data.profile.display_name })}</p>
-		<h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">{t.lists.heading}</h1>
-		{#if defaultHousehold}
-			<form
-				class="flex flex-col gap-3 sm:flex-row"
-				onsubmit={(event) => {
-					event.preventDefault();
-					void createList();
-				}}
-			>
-				<input
-					class={[fieldClass, 'sm:flex-1']}
-					placeholder={t.lists.placeholder}
-					bind:value={name}
-					maxlength="80"
-				/>
-				<button class={btnPrimary} disabled={creating || !name.trim()} type="submit">
-					{creating ? t.lists.adding : t.lists.add}
-				</button>
-			</form>
-			<EmojiPicker bind:value={emoji} />
+		<div class="flex items-end justify-between gap-3">
+			<h2 class="text-lg font-semibold">{t.dashboard.rankings}</h2>
+			<a class="text-sm font-semibold text-gold" href={resolve('/app/chores')}>{t.dashboard.openChores}</a>
+		</div>
+		<Scoreboard {scores} userId={data.user?.id} empty={t.dashboard.rankingsEmpty} />
+	</section>
+
+	<section class="space-y-3">
+		<div class="flex items-end justify-between gap-3">
+			<h2 class="text-lg font-semibold">{t.dashboard.chores}</h2>
+			<a class="text-sm font-semibold text-gold" href={resolve('/app/chores')}>{t.dashboard.openChores}</a>
+		</div>
+		{#if chores.length === 0}
+			<section class={[panelClass, 'p-5']}>
+				<p class="text-sm text-fog">{t.dashboard.choresEmpty}</p>
+				<a class={['mt-3 inline-flex', btnGhost]} href={resolve('/app/chores/new')}>{t.chores.new}</a>
+			</section>
+		{:else if due.length === 0}
+			<p class="text-sm text-fog">{t.dashboard.allCaughtUp}</p>
+		{:else}
+			<ul class="space-y-2">
+				{#each due as row (row.chore.id)}
+					<li class={[panelClass, 'flex items-center justify-between gap-3 p-4']}>
+						<div class="min-w-0">
+							<p class="font-semibold">{row.chore.title}</p>
+							<p class="text-xs text-fog">
+								{frequencyLabel(row.chore.frequency_unit, row.chore.frequency_every)}
+								· {fill(t.chores.points, { count: row.chore.points })}
+							</p>
+						</div>
+						<button
+							class={btnPrimary}
+							type="button"
+							disabled={completing === row.chore.id}
+							onclick={() => void complete(row.chore.id)}
+						>
+							{completing === row.chore.id ? t.chores.doing : t.chores.done}
+						</button>
+					</li>
+				{/each}
+			</ul>
 		{/if}
 	</section>
 
-	{#if lists.length === 0}
-		<section class={[panelClass, 'p-6']}>
-			<p class="font-semibold">{t.lists.emptyTitle}</p>
-			<p class="mt-2 text-sm text-fog">{t.lists.emptyBody}</p>
-		</section>
-	{:else}
-		<SortableList items={lists} getId={(list) => list.id} group="lists" onreorder={reorderLists}>
-			{#snippet children(list, { dragging })}
-				<div
-					class={[
-						panelClass,
-						'flex items-stretch overflow-hidden transition',
-						dragging ? 'border-gold/50' : 'hover:border-gold/40'
-					]}
-				>
-					{#if lists.length > 1}
-						<GripHandle label={fill(t.lists.drag, { name: list.name })} />
-					{/if}
-					<a class="block min-w-0 flex-1 p-5" href={resolve(`/app/lists/${list.id}`)}>
-						<div class="flex items-start justify-between gap-4">
-							<div>
-								<p class="text-xs tracking-[0.18em] text-fog uppercase">{list.household_name}</p>
-								<h2 class="mt-2 text-xl font-semibold">
+	<section class="grid gap-6 lg:grid-cols-2">
+		<div class="space-y-3">
+			<div class="flex items-end justify-between gap-3">
+				<h2 class="text-lg font-semibold">{t.dashboard.lists}</h2>
+				<a class="text-sm font-semibold text-gold" href={resolve('/app/lists')}>{t.dashboard.openLists}</a>
+			</div>
+			{#if lists.length === 0}
+				<section class={[panelClass, 'p-5']}>
+					<p class="text-sm text-fog">{t.dashboard.listsEmpty}</p>
+				</section>
+			{:else}
+				<ul class="space-y-2">
+					{#each lists as list (list.id)}
+						<li>
+							<a
+								class={[panelClass, 'flex items-center justify-between gap-3 p-4 hover:border-gold/40']}
+								href={resolve(`/app/lists/${list.id}`)}
+							>
+								<p class="min-w-0 truncate font-semibold">
 									{#if list.emoji}<span class="mr-1">{list.emoji}</span>{/if}{list.name}
-								</h2>
-							</div>
-							<span class="rounded-full bg-gold/15 px-3 py-1 text-sm font-semibold text-gold">
-								{list.unchecked}
-							</span>
-						</div>
-						<p class="mt-3 text-sm text-fog">
-							{fill(t.lists.left, { unchecked: list.unchecked, total: list.total })}
+								</p>
+								<span class="shrink-0 text-sm text-gold"
+									>{fill(t.dashboard.left, { unchecked: list.unchecked })}</span
+								>
+							</a>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</div>
+		<div class="space-y-3">
+			<div class="flex items-end justify-between gap-3">
+				<h2 class="text-lg font-semibold">{t.dashboard.recipes}</h2>
+				<a class="text-sm font-semibold text-gold" href={resolve('/app/recipes')}>{t.dashboard.openRecipes}</a>
+			</div>
+			{#if recipes.length === 0}
+				<section class={[panelClass, 'p-5']}>
+					<p class="text-sm text-fog">{t.dashboard.recipesEmpty}</p>
+				</section>
+			{:else}
+				<ul class="space-y-2">
+					{#each recipes as recipe (recipe.id)}
+						{@const per = nutritionPerServing(recipe)}
+						{@const last = lastCookedEvent(snap, recipe.id)}
+						<li>
+							<a
+								class={[panelClass, 'flex gap-3 overflow-hidden hover:border-gold/40']}
+								href={resolve(`/app/recipes/${recipe.id}`)}
+							>
+								{#if recipe.image_url}
+									<img src={recipe.image_url} alt="" class="h-20 w-20 shrink-0 object-cover" />
+								{:else}
+									<div class="grid h-20 w-20 shrink-0 place-items-center bg-ink-soft" aria-hidden="true">
+										🍽️
+									</div>
+								{/if}
+								<div class="min-w-0 py-3 pr-3">
+									<p class="truncate font-semibold">{recipe.title}</p>
+									<p class="text-xs text-fog">
+										{#if recipe.calories}{formatNutrition(per.calories)} {t.recipes.kcal}{/if}
+										{#if last}
+											· {fill(t.recipes.lastCooked, { date: formatDay(last.cooked_at, i18n.locale) })}
+										{/if}
+									</p>
+								</div>
+							</a>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</div>
+	</section>
+
+	<section class="space-y-3">
+		<div class="flex items-end justify-between gap-3">
+			<h2 class="text-lg font-semibold">{t.dashboard.recentCooks}</h2>
+			<a class="text-sm font-semibold text-gold" href={resolve('/app/recipes/timeline')}
+				>{t.recipes.timelineNav}</a
+			>
+		</div>
+		{#if recentCooks.length === 0}
+			<p class="text-sm text-fog">{t.dashboard.recentEmpty}</p>
+		{:else}
+			<ol class="space-y-2">
+				{#each recentCooks as event (event.id)}
+					{@const recipe = snap.recipes.find((row) => row.id === event.recipe_id)}
+					<li class={[panelClass, 'p-4']}>
+						<p class="text-xs text-fog">
+							{formatDay(event.at, i18n.locale)}
+							{#if memberName(snap, event.user_id)}· {memberName(snap, event.user_id)}{/if}
 						</p>
-					</a>
-				</div>
-			{/snippet}
-		</SortableList>
-	{/if}
+						{#if recipe}
+							<a class="mt-1 block font-semibold text-gold" href={resolve(`/app/recipes/${recipe.id}`)}
+								>{recipe.title}</a
+							>
+						{/if}
+						{#if event.rating}
+							<div class="mt-1"><StarRating value={event.rating} readonly /></div>
+						{/if}
+					</li>
+				{/each}
+			</ol>
+		{/if}
+	</section>
 </div>
