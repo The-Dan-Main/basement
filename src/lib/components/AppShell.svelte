@@ -65,7 +65,7 @@
 		style="padding-top: max(0.75rem, env(safe-area-inset-top))"
 	>
 		<a href={resolve('/app')} class="min-w-0 shrink text-paper"><Logo /></a>
-		<div class="flex min-w-0 shrink-0 items-center gap-2 text-sm">
+		<div class="flex min-w-0 items-center gap-2 text-sm">
 			<LanguageSwitcher />
 			<span class="max-w-24 truncate rounded-full bg-white/5 px-3 py-1 text-fog">{live.display_name}</span>
 			<a
