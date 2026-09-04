@@ -3,7 +3,7 @@
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 	import { getI18n } from '$lib/i18n/i18n.svelte';
 	import { publishProfile } from '$lib/offline/live.svelte';
-	import { btnPrimary, fieldClass, panelClass } from '$lib/ui';
+	import { btnPrimary, fieldClass, labelClass, panelClass } from '$lib/ui';
 
 	let { data, form } = $props();
 	const i18n = getI18n();
@@ -45,7 +45,7 @@
 			};
 		}}
 	>
-		<label class="block space-y-2 text-sm">
+		<label class={labelClass}>
 			<span class="font-medium">{t.settings.displayName}</span>
 			<input
 				class={fieldClass}

@@ -2,7 +2,7 @@
 	import Logo from '$lib/components/Logo.svelte';
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 	import { getI18n } from '$lib/i18n/i18n.svelte';
-	import { btnPrimary, fieldClass, panelClass } from '$lib/ui';
+	import { btnPrimary, fieldClass, labelClass, panelClass } from '$lib/ui';
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 
@@ -33,15 +33,15 @@
 			}}
 		>
 			<input type="hidden" name="locale" value={i18n.locale} />
-			<label class="block space-y-2 text-sm">
+			<label class={labelClass}>
 				<span>{t.auth.displayName}</span>
 				<input class={fieldClass} name="displayName" maxlength="40" autocomplete="nickname" />
 			</label>
-			<label class="block space-y-2 text-sm">
+			<label class={labelClass}>
 				<span>{t.auth.email}</span>
 				<input class={fieldClass} name="email" type="email" autocomplete="email" required />
 			</label>
-			<label class="block space-y-2 text-sm">
+			<label class={labelClass}>
 				<span>{t.auth.password}</span>
 				<input
 					class={fieldClass}

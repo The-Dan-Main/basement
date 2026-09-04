@@ -43,6 +43,16 @@ export function formatDay(iso: string, locale: Locale) {
 	});
 }
 
+export function formatCompactDay(iso: string, locale: Locale) {
+	const date = new Date(iso);
+	if (Number.isNaN(date.getTime())) return iso;
+	return date.toLocaleDateString(locale === 'de' ? 'de-DE' : 'en-GB', {
+		year: 'numeric',
+		month: 'numeric',
+		day: 'numeric'
+	});
+}
+
 export function dayKey(iso: string) {
 	const date = new Date(iso);
 	if (Number.isNaN(date.getTime())) return iso;

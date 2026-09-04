@@ -17,14 +17,14 @@
 </script>
 
 <div
-	class="flex items-center gap-1"
+	class="flex items-center gap-1.5"
 	role={readonly ? 'img' : 'radiogroup'}
 	aria-label={t.recipes.rating}
 >
 	{#each [1, 2, 3, 4, 5] as star (star)}
 		<button
 			class={[
-				'grid h-9 w-9 place-items-center rounded-full text-xl',
+				'grid size-[3.375rem] place-items-center rounded-full text-[1.875rem] leading-none',
 				star <= value ? 'text-gold' : 'text-line',
 				readonly ? 'cursor-default' : 'hover:bg-white/5'
 			]}

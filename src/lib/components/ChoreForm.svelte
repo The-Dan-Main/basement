@@ -7,7 +7,7 @@
 	} from '$lib/chores';
 	import { getI18n } from '$lib/i18n/i18n.svelte';
 	import { fill } from '$lib/i18n/locales';
-	import { btnPrimary, fieldClass, selectClass } from '$lib/ui';
+	import { btnPrimary, fieldClass, labelClass, selectClass } from '$lib/ui';
 
 	export type ChoreFormValue = {
 		title: string;
@@ -41,7 +41,7 @@
 </script>
 
 <div class="space-y-5">
-	<label class="block space-y-2 text-sm">
+	<label class={labelClass}>
 		<span>{t.chores.titleLabel}</span>
 		<input
 			class={fieldClass}
@@ -51,13 +51,12 @@
 			required
 		/>
 	</label>
-	<label class="block space-y-2 text-sm">
+	<label class={labelClass}>
 		<span>{t.chores.description}</span>
 		<textarea
 			class={[fieldClass, 'min-h-24']}
 			bind:value={value.description}
-			placeholder={t.chores.descriptionPlaceholder}
-		></textarea>
+			placeholder={t.chores.descriptionPlaceholder}></textarea>
 	</label>
 	<fieldset class="space-y-3">
 		<legend class="text-sm font-medium">{t.chores.frequency}</legend>
@@ -93,7 +92,9 @@
 					onclick={() => setIntensity(intensity)}
 				>
 					<p class="font-semibold">{intensityLabel[intensity]}</p>
-					<p class="mt-1 text-xs text-fog">{fill(t.chores.points, { count: CHORE_POINTS[intensity] })}</p>
+					<p class="mt-1 text-xs text-fog">
+						{fill(t.chores.points, { count: CHORE_POINTS[intensity] })}
+					</p>
 				</button>
 			{/each}
 		</div>

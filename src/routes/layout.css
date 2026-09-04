@@ -47,8 +47,21 @@
 
 	input[type='date'] {
 		display: block;
-		min-width: 0;
+		width: min(100%, 14rem);
 		max-width: 100%;
+		min-width: 0;
 		box-sizing: border-box;
+	}
+
+	input[type='date']::-webkit-datetime-edit {
+		min-width: 0;
+		padding: 0;
+	}
+
+	input[type='date']::-webkit-calendar-picker-indicator {
+		margin-left: 0.25rem;
+		margin-right: 0;
+		cursor: pointer;
+		flex-shrink: 0;
 	}
 }
