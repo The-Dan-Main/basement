@@ -1,0 +1,8 @@
+---
+description: Apply Supabase schema via the Management API
+alwaysApply: true
+---
+
+When changing the database, apply SQL through the Supabase Management API using `SUPABASE_ACCESS_TOKEN` and `SUPABASE_PROJECT_ID`. Do not ask the user to run SQL in the dashboard.
+
+POST `https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/database/query` with `Authorization: Bearer $SUPABASE_ACCESS_TOKEN`, a browser-like User-Agent, and JSON `{"query":"<sql>"}`. Keep a matching file in `supabase/migrations/` and list it in `src/routes/+page.server.ts`. Enable RLS on new public tables.
