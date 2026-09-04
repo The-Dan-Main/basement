@@ -268,6 +268,28 @@ export function planRecipeListAdds(existing: ListItem[], ingredients: ListAddInp
 	return { updates, adds };
 }
 
+export function collapseListAdds(ingredients: ListAddInput[]): ListAddInput[] {
+	const collapsed: ListAddInput[] = [];
+	for (const ingredient of ingredients) {
+		const name = ingredient.name.trim();
+		if (!name) continue;
+		const match = collapsed.find((row) => itemKey(row.name) === itemKey(name));
+		if (match) {
+			match.quantity = mergeQuantities(match.quantity, ingredient.quantity);
+			match.note = mergeNotes(match.note, ingredient.note);
+			match.category = match.category || ingredient.category;
+			continue;
+		}
+		collapsed.push({
+			name,
+			quantity: ingredient.quantity,
+			note: ingredient.note,
+			category: ingredient.category
+		});
+	}
+	return collapsed;
+}
+
 export function scaledIngredients(ingredients: RecipeIngredient[], factor: number): ListAddInput[] {
 	return [...ingredients]
 		.sort((a, b) => a.sort_order - b.sort_order)
@@ -297,7 +319,9 @@ export function hydrateRecipe(row: Recipe): Recipe {
 		image_path: row.image_path ?? '',
 		image_url: row.image_url ?? '',
 		source: row.source ?? '',
-		source_key: row.source_key ?? ''
+		source_key: row.source_key ?? '',
+		is_public: Boolean(row.is_public),
+		public_slug: row.public_slug ?? ''
 	};
 }
 
@@ -316,6 +340,8 @@ export function buildRecipeBundle(input: {
 	fiber_g: number;
 	source?: string;
 	sourceKey?: string;
+	isPublic?: boolean;
+	publicSlug?: string;
 	ingredients: {
 		name: string;
 		amount: number | null;
@@ -342,6 +368,8 @@ export function buildRecipeBundle(input: {
 		fiber_g: input.fiber_g,
 		source: input.source ?? '',
 		source_key: input.sourceKey ?? '',
+		is_public: Boolean(input.isPublic),
+		public_slug: input.publicSlug ?? '',
 		created_by: input.userId,
 		created_at: input.createdAt ?? now,
 		updated_at: input.updatedAt ?? now

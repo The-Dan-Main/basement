@@ -87,6 +87,8 @@ export type RecipeRow = {
 	fiber_g: number;
 	source: string;
 	source_key: string;
+	is_public: boolean;
+	public_slug: string;
 	created_by: string;
 	created_at: string;
 	updated_at: string;
@@ -176,6 +178,25 @@ export type ChoreRow = {
 	created_at: string;
 	updated_at: string;
 	archived_at: string | null;
+};
+
+export type MealPlanEntryRow = {
+	id: string;
+	household_id: string;
+	recipe_id: string;
+	plan_date: string;
+	servings: number;
+	sort_order: number;
+	created_by: string;
+	created_at: string;
+};
+
+export type RecipePublicCommentRow = {
+	id: string;
+	recipe_id: string;
+	author_name: string;
+	body: string;
+	created_at: string;
 };
 
 export type ChoreCompletionRow = {
@@ -290,6 +311,8 @@ export interface Database {
 					fiber_g?: number;
 					source?: string;
 					source_key?: string;
+					is_public?: boolean;
+					public_slug?: string;
 					created_at?: string;
 					updated_at?: string;
 				},
@@ -381,6 +404,31 @@ export interface Database {
 				},
 				Partial<CookbookCommentRow>
 			>;
+			meal_plan_entries: Table<
+				MealPlanEntryRow,
+				{
+					household_id: string;
+					recipe_id: string;
+					plan_date: string;
+					created_by: string;
+					id?: string;
+					servings?: number;
+					sort_order?: number;
+					created_at?: string;
+				},
+				Partial<MealPlanEntryRow>
+			>;
+			recipe_public_comments: Table<
+				RecipePublicCommentRow,
+				{
+					recipe_id: string;
+					author_name: string;
+					body: string;
+					id?: string;
+					created_at?: string;
+				},
+				Partial<RecipePublicCommentRow>
+			>;
 			chores: Table<
 				ChoreRow,
 				{
@@ -438,3 +486,5 @@ export type RecipeComment = RecipeCommentRow;
 export type CookbookComment = CookbookCommentRow;
 export type Chore = ChoreRow;
 export type ChoreCompletion = ChoreCompletionRow;
+export type MealPlanEntry = MealPlanEntryRow;
+export type RecipePublicComment = RecipePublicCommentRow;

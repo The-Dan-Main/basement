@@ -64,6 +64,8 @@
 				fiber_g: asNumber(value.fiber_g),
 				source: detail.recipe.source,
 				sourceKey: detail.recipe.source_key,
+				isPublic: detail.recipe.is_public,
+				publicSlug: detail.recipe.public_slug,
 				ingredients: value.ingredients.map((row) => ({
 					name: row.name,
 					amount: parseAmountInput(row.amount),
