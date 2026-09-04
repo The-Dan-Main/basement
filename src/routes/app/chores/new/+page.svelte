@@ -15,6 +15,7 @@
 	const snap = $derived(resolveSnapshot(data.snap) ?? data.snap);
 	const household = $derived(snap.households[0] ?? null);
 	let saving = $state(false);
+	let error = $state('');
 	let value = $state<ChoreFormValue>({
 		title: '',
 		description: '',
@@ -29,6 +30,7 @@
 		const title = value.title.trim();
 		if (!title) return;
 		saving = true;
+		error = '';
 		const now = nowIso();
 		const chore: Chore = {
 			id: crypto.randomUUID(),
@@ -44,8 +46,14 @@
 			updated_at: now,
 			archived_at: null
 		};
-		await persistChoreUpsert(data.supabase, data.user.id, chore);
-		await goto(resolve('/app/chores'));
+		try {
+			await persistChoreUpsert(data.supabase, data.user.id, chore);
+			await goto(resolve('/app/chores'));
+		} catch {
+			error = t.errors.generic;
+		} finally {
+			saving = false;
+		}
 	}
 </script>
 
@@ -59,4 +67,7 @@
 	<form onsubmit={(event) => void save(event)}>
 		<ChoreForm bind:value {saving} submitLabel={t.chores.save} />
 	</form>
+	{#if error}
+		<p class="text-sm text-coral">{error}</p>
+	{/if}
 </div>

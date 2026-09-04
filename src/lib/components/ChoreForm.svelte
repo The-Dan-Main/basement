@@ -85,7 +85,7 @@
 							: 'border-line text-paper hover:border-gold/40'
 					]}
 					type="button"
-					onclick={() => (value.intensity = intensity)}
+					onclick={() => (value = { ...value, intensity })}
 				>
 					<p class="font-semibold">{intensityLabel[intensity]}</p>
 					<p class="mt-1 text-xs text-fog">{fill(t.chores.points, { count: CHORE_POINTS[intensity] })}</p>

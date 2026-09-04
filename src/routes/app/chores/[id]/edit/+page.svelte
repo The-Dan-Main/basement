@@ -36,17 +36,21 @@
 		const title = value.title.trim();
 		if (!title) return;
 		saving = true;
-		await persistChoreUpsert(data.supabase, data.user.id, {
-			...chore,
-			title,
-			description: value.description.trim(),
-			frequency_unit: value.frequency_unit,
-			frequency_every: clampEvery(value.frequency_every),
-			intensity: value.intensity,
-			points: pointsForIntensity(value.intensity),
-			updated_at: nowIso()
-		});
-		await goto(resolve('/app/chores'));
+		try {
+			await persistChoreUpsert(data.supabase, data.user.id, {
+				...chore,
+				title,
+				description: value.description.trim(),
+				frequency_unit: value.frequency_unit,
+				frequency_every: clampEvery(value.frequency_every),
+				intensity: value.intensity,
+				points: pointsForIntensity(value.intensity),
+				updated_at: nowIso()
+			});
+			await goto(resolve('/app/chores'));
+		} finally {
+			saving = false;
+		}
 	}
 
 	async function remove() {
