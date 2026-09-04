@@ -4,7 +4,7 @@
 	import { getI18n } from '$lib/i18n/i18n.svelte';
 	import { fill } from '$lib/i18n/locales';
 	import { RECIPE_UNITS } from '$lib/recipes';
-	import { btnGhost, btnPrimary, fieldClass, panelClass } from '$lib/ui';
+	import { btnGhost, btnPrimary, fieldClass, panelClass, selectClass } from '$lib/ui';
 	import type { Recipe, RecipeIngredient, RecipeStep } from '$lib/types/app';
 	import { untrack } from 'svelte';
 
@@ -224,7 +224,7 @@
 				<input class={fieldClass} placeholder={t.recipes.ingredient} bind:value={row.name} />
 				<div class="grid grid-cols-2 gap-2 sm:grid-cols-[7rem_8rem_1fr]">
 					<input class={fieldClass} placeholder={t.recipes.amount} bind:value={row.amount} />
-					<select class={fieldClass} bind:value={row.unit} aria-label={t.recipes.unit}>
+					<select class={selectClass} bind:value={row.unit} aria-label={t.recipes.unit}>
 						{#each RECIPE_UNITS as unit (unit || 'none')}
 							<option value={unit}>{unit ? t.recipes.units[unit] : t.recipes.units.none}</option>
 						{/each}

@@ -15,6 +15,8 @@ import {
 import { nextFrontSortOrder, type OrderPatch } from '$lib/sort';
 import type { BasementClient } from '$lib/supabase/client';
 import type {
+	Chore,
+	ChoreCompletion,
 	Cookbook,
 	CookbookComment,
 	CookbookRecipe,
@@ -52,6 +54,8 @@ export type OfflineSnapshot = {
 	recipeTimeline: RecipeTimelineEvent[];
 	recipeComments: RecipeComment[];
 	cookbookComments: CookbookComment[];
+	chores: Chore[];
+	choreCompletions: ChoreCompletion[];
 };
 
 export type OutboxPayload =
@@ -82,7 +86,11 @@ export type OutboxPayload =
 	| { kind: 'recipeCommentAdd'; comment: RecipeComment }
 	| { kind: 'recipeCommentDelete'; commentId: string }
 	| { kind: 'cookbookCommentAdd'; comment: CookbookComment }
-	| { kind: 'cookbookCommentDelete'; commentId: string };
+	| { kind: 'cookbookCommentDelete'; commentId: string }
+	| { kind: 'choreUpsert'; chore: Chore }
+	| { kind: 'choreDelete'; choreId: string }
+	| { kind: 'choreComplete'; completion: ChoreCompletion }
+	| { kind: 'choreUncomplete'; completionId: string };
 
 const SNAP_KEY = 'snapshot';
 
@@ -105,7 +113,9 @@ export function emptySnapshot(userId: string, profile: Profile): OfflineSnapshot
 		recipeRatings: [],
 		recipeTimeline: [],
 		recipeComments: [],
-		cookbookComments: []
+		cookbookComments: [],
+		chores: [],
+		choreCompletions: []
 	};
 }
 
@@ -127,7 +137,9 @@ function hydrateSnapshot(snap: OfflineSnapshot): OfflineSnapshot {
 		recipeRatings: snap.recipeRatings ?? [],
 		recipeTimeline: snap.recipeTimeline ?? [],
 		recipeComments: snap.recipeComments ?? [],
-		cookbookComments: snap.cookbookComments ?? []
+		cookbookComments: snap.cookbookComments ?? [],
+		chores: snap.chores ?? [],
+		choreCompletions: snap.choreCompletions ?? []
 	};
 }
 
@@ -310,6 +322,17 @@ function applyOutbox(snap: OfflineSnapshot, payloads: OutboxPayload[]): OfflineS
 				...next,
 				cookbookComments: next.cookbookComments.filter((row) => row.id !== payload.commentId)
 			};
+		} else if (payload.kind === 'choreUpsert') {
+			next = applyChore(next, payload.chore);
+		} else if (payload.kind === 'choreDelete') {
+			next = removeChoreFromSnap(next, payload.choreId);
+		} else if (payload.kind === 'choreComplete') {
+			next = applyChoreCompletion(next, payload.completion);
+		} else if (payload.kind === 'choreUncomplete') {
+			next = {
+				...next,
+				choreCompletions: next.choreCompletions.filter((row) => row.id !== payload.completionId)
+			};
 		}
 	}
 	return next;
@@ -357,6 +380,35 @@ function removeCookbookFromSnap(snap: OfflineSnapshot, cookbookId: string): Offl
 		cookbooks: snap.cookbooks.filter((row) => row.id !== cookbookId),
 		cookbookRecipes: snap.cookbookRecipes.filter((row) => row.cookbook_id !== cookbookId),
 		cookbookComments: snap.cookbookComments.filter((row) => row.cookbook_id !== cookbookId)
+	};
+}
+
+function applyChore(snap: OfflineSnapshot, chore: Chore): OfflineSnapshot {
+	return {
+		...snap,
+		chores: [chore, ...snap.chores.filter((row) => row.id !== chore.id)]
+	};
+}
+
+function removeChoreFromSnap(snap: OfflineSnapshot, choreId: string): OfflineSnapshot {
+	return {
+		...snap,
+		chores: snap.chores.filter((row) => row.id !== choreId),
+		choreCompletions: snap.choreCompletions.filter((row) => row.chore_id !== choreId)
+	};
+}
+
+function applyChoreCompletion(snap: OfflineSnapshot, completion: ChoreCompletion): OfflineSnapshot {
+	return {
+		...snap,
+		choreCompletions: [
+			completion,
+			...snap.choreCompletions.filter(
+				(row) =>
+					row.id !== completion.id &&
+					!(row.chore_id === completion.chore_id && row.period_key === completion.period_key)
+			)
+		]
 	};
 }
 
@@ -447,6 +499,8 @@ export async function pullSnapshot(
 		recipeTimeline,
 		recipeComments,
 		cookbookComments,
+		chores,
+		choreCompletions,
 		profileRow
 	] = await Promise.all([
 		fetchAllRows<Household>((from, to) =>
@@ -553,6 +607,21 @@ export async function pullSnapshot(
 				.order('created_at', { ascending: false })
 				.range(from, to)
 		),
+		fetchAllRows<Chore>((from, to) =>
+			supabase
+				.from('chores')
+				.select('*')
+				.is('archived_at', null)
+				.order('updated_at', { ascending: false })
+				.range(from, to)
+		),
+		fetchAllRows<ChoreCompletion>((from, to) =>
+			supabase
+				.from('chore_completions')
+				.select('*')
+				.order('completed_at', { ascending: false })
+				.range(from, to)
+		),
 		supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
 	]);
 
@@ -594,7 +663,9 @@ export async function pullSnapshot(
 		recipeRatings,
 		recipeTimeline,
 		recipeComments,
-		cookbookComments
+		cookbookComments,
+		chores,
+		choreCompletions
 	});
 	const merged = await snapshotWithOutbox(next);
 	publishProfile(merged.profile);
@@ -765,6 +836,18 @@ async function pushPayload(supabase: BasementClient, payload: OutboxPayload) {
 		if (error) throw error;
 	} else if (payload.kind === 'cookbookCommentDelete') {
 		const { error } = await supabase.from('cookbook_comments').delete().eq('id', payload.commentId);
+		if (error) throw error;
+	} else if (payload.kind === 'choreUpsert') {
+		const { error } = await supabase.from('chores').upsert(payload.chore);
+		if (error) throw error;
+	} else if (payload.kind === 'choreDelete') {
+		const { error } = await supabase.from('chores').delete().eq('id', payload.choreId);
+		if (error) throw error;
+	} else if (payload.kind === 'choreComplete') {
+		const { error } = await supabase.from('chore_completions').insert(payload.completion);
+		if (error) throw error;
+	} else if (payload.kind === 'choreUncomplete') {
+		const { error } = await supabase.from('chore_completions').delete().eq('id', payload.completionId);
 		if (error) throw error;
 	}
 }
@@ -1110,6 +1193,37 @@ export async function persistCookbookCommentDelete(
 	await pushOrQueue(supabase, { kind: 'cookbookCommentDelete', commentId });
 }
 
+export async function persistChoreUpsert(supabase: BasementClient, userId: string, chore: Chore) {
+	await mutateSnapshot(userId, (snap) => applyChore(snap, chore));
+	await pushOrQueue(supabase, { kind: 'choreUpsert', chore });
+}
+
+export async function persistChoreDelete(supabase: BasementClient, userId: string, choreId: string) {
+	await mutateSnapshot(userId, (snap) => removeChoreFromSnap(snap, choreId));
+	await pushOrQueue(supabase, { kind: 'choreDelete', choreId });
+}
+
+export async function persistChoreComplete(
+	supabase: BasementClient,
+	userId: string,
+	completion: ChoreCompletion
+) {
+	await mutateSnapshot(userId, (snap) => applyChoreCompletion(snap, completion));
+	await pushOrQueue(supabase, { kind: 'choreComplete', completion });
+}
+
+export async function persistChoreUncomplete(
+	supabase: BasementClient,
+	userId: string,
+	completionId: string
+) {
+	await mutateSnapshot(userId, (snap) => ({
+		...snap,
+		choreCompletions: snap.choreCompletions.filter((row) => row.id !== completionId)
+	}));
+	await pushOrQueue(supabase, { kind: 'choreUncomplete', completionId });
+}
+
 export async function persistRecipeToList(
 	supabase: BasementClient,
 	userId: string,
@@ -1267,7 +1381,7 @@ export function recipeDetail(snap: OfflineSnapshot, recipeId: string) {
 		.filter((row) => row.recipe_id === recipeId)
 		.sort((a, b) => b.created_at.localeCompare(a.created_at));
 	const timeline = snap.recipeTimeline
-		.filter((row) => row.recipe_id === recipeId)
+		.filter((row) => row.recipe_id === recipeId && isCookedEvent(row))
 		.sort((a, b) => b.cooked_at.localeCompare(a.cooked_at));
 	const ratings = snap.recipeRatings.filter((row) => row.recipe_id === recipeId);
 	const cookbooks = snap.cookbooks
@@ -1301,10 +1415,78 @@ export function cookbookDetail(snap: OfflineSnapshot, cookbookId: string) {
 	return { cookbook, recipes, recipeIds, comments };
 }
 
+export function isCookedEvent(event: RecipeTimelineEvent) {
+	return !event.event_type || event.event_type === 'cooked';
+}
+
+export type RecipeFeedKind = 'created' | 'cooked';
+
+export type RecipeFeedItem = {
+	id: string;
+	kind: RecipeFeedKind;
+	at: string;
+	recipe_id: string;
+	household_id: string;
+	user_id: string;
+	rating: number | null;
+	note: string;
+};
+
+export function recipeFeed(
+	snap: OfflineSnapshot,
+	householdId?: string,
+	filter: 'all' | RecipeFeedKind = 'all'
+): RecipeFeedItem[] {
+	const recipes = snap.recipes.filter(
+		(recipe) => !householdId || recipe.household_id === householdId
+	);
+	const created: RecipeFeedItem[] = recipes.map((recipe) => ({
+		id: `created:${recipe.id}`,
+		kind: 'created',
+		at: recipe.created_at,
+		recipe_id: recipe.id,
+		household_id: recipe.household_id,
+		user_id: recipe.created_by,
+		rating: null,
+		note: ''
+	}));
+	const cooked: RecipeFeedItem[] = snap.recipeTimeline
+		.filter((event) => isCookedEvent(event) && (!householdId || event.household_id === householdId))
+		.map((event) => ({
+			id: event.id,
+			kind: 'cooked' as const,
+			at: event.cooked_at,
+			recipe_id: event.recipe_id,
+			household_id: event.household_id,
+			user_id: event.user_id,
+			rating: event.rating,
+			note: event.note
+		}));
+	return [...created, ...cooked]
+		.filter((item) => filter === 'all' || item.kind === filter)
+		.sort((a, b) => b.at.localeCompare(a.at) || a.kind.localeCompare(b.kind));
+}
+
+export function lastCookedEvent(snap: OfflineSnapshot, recipeId: string) {
+	return (
+		snap.recipeTimeline
+			.filter((row) => row.recipe_id === recipeId && isCookedEvent(row))
+			.sort((a, b) => b.cooked_at.localeCompare(a.cooked_at))[0] ?? null
+	);
+}
+
 export function householdTimeline(snap: OfflineSnapshot, householdId?: string) {
-	return snap.recipeTimeline
-		.filter((event) => !householdId || event.household_id === householdId)
-		.sort((a, b) => b.cooked_at.localeCompare(a.cooked_at));
+	return recipeFeed(snap, householdId, 'cooked').map((item) => ({
+		id: item.id,
+		recipe_id: item.recipe_id,
+		household_id: item.household_id,
+		user_id: item.user_id,
+		event_type: 'cooked' as const,
+		cooked_at: item.at,
+		rating: item.rating,
+		note: item.note,
+		created_at: item.at
+	}));
 }
 
 export function averageRating(ratings: RecipeRating[]) {

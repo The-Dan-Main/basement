@@ -17,7 +17,7 @@
 <label class="inline-flex items-center gap-2 text-xs text-fog">
 	<span class="sr-only">{i18n.t.language}</span>
 	<select
-		class="rounded-full border border-line bg-ink-soft px-3 py-1.5 text-xs font-medium text-paper outline-none focus:border-gold/70"
+		class="select-chevron rounded-full border border-line bg-ink-soft py-1.5 pr-8 pl-3 text-xs font-medium text-paper outline-none focus:border-gold/70"
 		bind:value={i18n.locale}
 		onchange={onChange}
 	>

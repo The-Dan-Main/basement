@@ -153,7 +153,7 @@
 		if (!data.supabase || !data.user || !list) return;
 		if (!confirm(fill(t.list.deleteConfirm, { name: list.name }))) return;
 		await persistListDelete(data.supabase, data.user.id, list.id);
-		await goto(resolve('/app'));
+		await goto(resolve('/app/lists'));
 	}
 
 	async function clearChecked() {
@@ -217,7 +217,7 @@
 	<div class="space-y-6">
 		<div class="flex flex-wrap items-start justify-between gap-3">
 			<div class="min-w-0 flex-1">
-				<a class="text-sm text-gold" href={resolve('/app')}>{t.list.all}</a>
+				<a class="text-sm text-gold" href={resolve('/app/lists')}>{t.list.all}</a>
 				{#if renaming}
 					<form
 						class="mt-3 space-y-3"

@@ -27,6 +27,7 @@ async function main() {
 	assert.deepEqual(recipe.cookbooks.sort(), ['Chicken', 'Leicht']);
 	assert.equal(recipe.calories, 1024);
 	assert.equal(recipe.protein_g, 78);
+	assert.equal(recipe.createdAt, '2026-06-13');
 
 	const fromZip = await recipesFromZipBytes(await readFile(zipPath));
 	assert.equal(fromZip.length, 1);

@@ -163,6 +163,31 @@ export type CookbookCommentRow = {
 	updated_at: string;
 };
 
+export type ChoreRow = {
+	id: string;
+	household_id: string;
+	title: string;
+	description: string;
+	frequency_unit: 'week' | 'month';
+	frequency_every: number;
+	intensity: 'light' | 'medium' | 'heavy';
+	points: number;
+	created_by: string;
+	created_at: string;
+	updated_at: string;
+	archived_at: string | null;
+};
+
+export type ChoreCompletionRow = {
+	id: string;
+	chore_id: string;
+	household_id: string;
+	user_id: string;
+	completed_at: string;
+	period_key: string;
+	points: number;
+};
+
 type Table<Row, Insert = Partial<Row> & Record<string, never>, Update = Partial<Row>> = {
 	Row: Row;
 	Insert: Insert;
@@ -356,6 +381,37 @@ export interface Database {
 				},
 				Partial<CookbookCommentRow>
 			>;
+			chores: Table<
+				ChoreRow,
+				{
+					household_id: string;
+					title: string;
+					created_by: string;
+					id?: string;
+					description?: string;
+					frequency_unit?: ChoreRow['frequency_unit'];
+					frequency_every?: number;
+					intensity?: ChoreRow['intensity'];
+					points?: number;
+					created_at?: string;
+					updated_at?: string;
+					archived_at?: string | null;
+				},
+				Partial<ChoreRow>
+			>;
+			chore_completions: Table<
+				ChoreCompletionRow,
+				{
+					chore_id: string;
+					household_id: string;
+					user_id: string;
+					id?: string;
+					completed_at?: string;
+					period_key: string;
+					points: number;
+				},
+				Partial<ChoreCompletionRow>
+			>;
 		};
 		Views: Record<never, never>;
 		Functions: Record<never, never>;
@@ -380,3 +436,5 @@ export type RecipeRating = RecipeRatingRow;
 export type RecipeTimelineEvent = RecipeTimelineRow;
 export type RecipeComment = RecipeCommentRow;
 export type CookbookComment = CookbookCommentRow;
+export type Chore = ChoreRow;
+export type ChoreCompletion = ChoreCompletionRow;

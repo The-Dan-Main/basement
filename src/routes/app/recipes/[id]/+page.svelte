@@ -31,7 +31,7 @@
 		scaleNutrition
 	} from '$lib/recipes';
 	import { nextFrontSortOrder } from '$lib/sort';
-	import { btnGhost, btnPrimary, btnQuiet, fieldClass, panelClass } from '$lib/ui';
+	import { btnGhost, btnPrimary, btnQuiet, dateClass, fieldClass, panelClass, selectClass } from '$lib/ui';
 	import type { ShoppingList } from '$lib/types/app';
 
 	let { data } = $props();
@@ -298,7 +298,7 @@
 			{#if lists.length > 0}
 				<label class="block space-y-2 text-sm">
 					<span>{t.recipes.chooseList}</span>
-					<select class={fieldClass} bind:value={listId}>
+					<select class={selectClass} bind:value={listId}>
 						{#each lists as list (list.id)}
 							<option value={list.id}>{list.emoji} {list.name}</option>
 						{/each}
@@ -343,11 +343,11 @@
 			{/if}
 		</section>
 
-		<section class={[panelClass, 'space-y-4 p-5']}>
+		<section class={[panelClass, 'min-w-0 space-y-4 overflow-hidden p-5']}>
 			<h2 class="text-lg font-semibold">{t.recipes.cooked}</h2>
-			<label class="block space-y-2 text-sm">
+			<label class="block min-w-0 space-y-2 text-sm">
 				<span>{t.recipes.cookedWhen}</span>
-				<input class={fieldClass} type="date" bind:value={cookedOn} />
+				<input class={dateClass} type="date" bind:value={cookedOn} />
 			</label>
 			<div class="space-y-2">
 				<p class="text-sm">{t.recipes.rating}</p>

@@ -101,7 +101,7 @@ self.addEventListener('fetch', (event) => {
 						(await caches.open(ASSET_CACHE).then((cache) => cache.match('/offline.html')));
 					if (offline) return offline;
 				}
-				throw new Error('offline');
+				return new Response('Offline', { status: 503, statusText: 'Offline' });
 			}
 		})()
 	);
