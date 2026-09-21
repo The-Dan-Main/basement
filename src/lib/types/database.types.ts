@@ -188,6 +188,16 @@ export type ChoreCompletionRow = {
 	points: number;
 };
 
+export type SiteContentRow = {
+	id: string;
+	key: string;
+	locale: string;
+	value: string;
+	sort_order: number;
+	created_at: string;
+	updated_at: string;
+};
+
 type Table<Row, Insert = Partial<Row> & Record<string, never>, Update = Partial<Row>> = {
 	Row: Row;
 	Insert: Insert;
@@ -412,6 +422,19 @@ export interface Database {
 				},
 				Partial<ChoreCompletionRow>
 			>;
+			site_content: Table<
+				SiteContentRow,
+				{
+					key: string;
+					value: string;
+					id?: string;
+					locale?: string;
+					sort_order?: number;
+					created_at?: string;
+					updated_at?: string;
+				},
+				Partial<SiteContentRow>
+			>;
 		};
 		Views: Record<never, never>;
 		Functions: Record<never, never>;
@@ -438,3 +461,4 @@ export type RecipeComment = RecipeCommentRow;
 export type CookbookComment = CookbookCommentRow;
 export type Chore = ChoreRow;
 export type ChoreCompletion = ChoreCompletionRow;
+export type SiteContent = SiteContentRow;

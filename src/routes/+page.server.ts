@@ -1,6 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import type { SiteContent } from '$lib/types/database.types';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, parent }) => {
@@ -14,10 +15,22 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		'003_shopping_features.sql',
 		'004_recipes.sql',
 		'005_cookbooks_social.sql',
-		'006_chores.sql'
+		'006_chores.sql',
+		'007_site_content.sql'
 	];
 	const chunks = await Promise.all(
 		files.map((file) => readFile(path.join(migrations, file), 'utf8'))
 	);
-	return { configured: locals.configured, sql: chunks.join('\n\n') };
+
+	let siteContent: SiteContent[] = [];
+	if (locals.supabase) {
+		const { data } = await locals.supabase
+			.from('site_content')
+			.select('id, key, locale, value, sort_order, created_at, updated_at')
+			.order('sort_order', { ascending: true })
+			.order('key', { ascending: true });
+		siteContent = data ?? [];
+	}
+
+	return { configured: locals.configured, sql: chunks.join('\n\n'), siteContent };
 };
