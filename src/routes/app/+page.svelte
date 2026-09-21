@@ -10,11 +10,18 @@
 	import {
 		lastCookedEvent,
 		listSummaries,
+		mealPlanForRange,
 		memberName,
 		persistChoreComplete,
 		recipeFeed,
 		recipesForHousehold
 	} from '$lib/offline/sync';
+	import {
+		formatPlanDay,
+		formatWeekdayShort,
+		mondayOf,
+		weekDates
+	} from '$lib/meal-plan';
 	import { formatNutrition, nutritionPerServing } from '$lib/recipes';
 	import { btnGhost, btnPrimary, panelClass } from '$lib/ui';
 
@@ -29,6 +36,13 @@
 	const due = $derived(chores.filter((row) => !row.done).slice(0, 5));
 	const scores = $derived(householdScores(snap.members, snap.choreCompletions, household?.id));
 	const recentCooks = $derived(recipeFeed(snap, household?.id, 'cooked').slice(0, 4));
+	const planMonday = mondayOf();
+	const planDays = weekDates(planMonday);
+	const weekPlan = $derived(
+		household
+			? mealPlanForRange(snap, household.id, planDays[0] ?? planMonday, planDays[6] ?? planMonday)
+			: []
+	);
 	let completing = $state('');
 
 	function frequencyLabel(unit: 'week' | 'month', every: number) {
@@ -58,28 +72,64 @@
 
 <svelte:head><title>{t.dashboard.title}</title></svelte:head>
 
-<div class="min-w-0 space-y-8">
+<div class="min-w-0 max-w-full space-y-8">
 	<section>
 		<p class="text-sm text-fog">{fill(t.dashboard.hi, { name: data.profile.display_name })}</p>
 		<h1 class="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">{t.dashboard.heading}</h1>
 	</section>
 
-	<section class="space-y-3">
-		<div class="flex items-end justify-between gap-3">
-			<h2 class="text-lg font-semibold">{t.dashboard.rankings}</h2>
-			<a class="text-sm font-semibold text-gold" href={resolve('/app/chores')}
-				>{t.dashboard.openChores}</a
-			>
+	<section class="min-w-0 space-y-3">
+		<div class="flex min-w-0 flex-wrap items-end justify-between gap-x-3 gap-y-1">
+			<h2 class="min-w-0 text-lg font-semibold">{t.dashboard.rankings}</h2>
+			<a class="shrink-0 text-sm font-semibold text-gold" href={resolve('/app/chores')}>{t.dashboard.openChores}</a>
 		</div>
 		<Scoreboard {scores} userId={data.user?.id} empty={t.dashboard.rankingsEmpty} />
 	</section>
 
-	<section class="space-y-3">
-		<div class="flex items-end justify-between gap-3">
-			<h2 class="text-lg font-semibold">{t.dashboard.chores}</h2>
-			<a class="text-sm font-semibold text-gold" href={resolve('/app/chores')}
-				>{t.dashboard.openChores}</a
+	<section class="min-w-0 space-y-3">
+		<div class="flex min-w-0 flex-wrap items-end justify-between gap-x-3 gap-y-1">
+			<h2 class="min-w-0 text-lg font-semibold">{t.dashboard.plan}</h2>
+			<a class="shrink-0 text-sm font-semibold text-gold" href={resolve('/app/recipes/plan')}
+				>{t.dashboard.openPlan}</a
 			>
+		</div>
+		{#if weekPlan.length === 0}
+			<section class={[panelClass, 'p-5']}>
+				<p class="text-sm text-fog">{t.dashboard.planEmpty}</p>
+			</section>
+		{:else}
+			<ul class="space-y-2">
+				{#each planDays as day (day)}
+					{@const dayEntries = weekPlan.filter((entry) => entry.plan_date === day)}
+					{#if dayEntries.length > 0}
+						<li class={[panelClass, 'min-w-0 p-4']}>
+							<p class="text-xs tracking-[0.16em] text-fog uppercase">
+								{formatWeekdayShort(day, i18n.locale)} · {formatPlanDay(day, i18n.locale)}
+							</p>
+							<ul class="mt-2 min-w-0 space-y-1">
+								{#each dayEntries as entry (entry.id)}
+									{@const planned = snap.recipes.find((row) => row.id === entry.recipe_id)}
+									{#if planned}
+										<li class="min-w-0">
+											<a
+												class="block truncate font-semibold text-gold"
+												href={resolve(`/app/recipes/${planned.id}`)}>{planned.title}</a
+											>
+										</li>
+									{/if}
+								{/each}
+							</ul>
+						</li>
+					{/if}
+				{/each}
+			</ul>
+		{/if}
+	</section>
+
+	<section class="min-w-0 space-y-3">
+		<div class="flex min-w-0 flex-wrap items-end justify-between gap-x-3 gap-y-1">
+			<h2 class="min-w-0 text-lg font-semibold">{t.dashboard.chores}</h2>
+			<a class="shrink-0 text-sm font-semibold text-gold" href={resolve('/app/chores')}>{t.dashboard.openChores}</a>
 		</div>
 		{#if chores.length === 0}
 			<section class={[panelClass, 'p-5']}>
@@ -115,30 +165,28 @@
 		{/if}
 	</section>
 
-	<section class="relative grid min-w-0 gap-6 lg:grid-cols-2">
+	<section class="flex w-full min-w-0 flex-col gap-8 lg:grid lg:grid-cols-2 lg:gap-6">
 		<div class="min-w-0 space-y-3">
-			<div class="flex items-end justify-between gap-3">
-				<h2 class="text-lg font-semibold">{t.dashboard.lists}</h2>
-				<a class="text-sm font-semibold text-gold" href={resolve('/app/lists')}
-					>{t.dashboard.openLists}</a
-				>
+			<div class="flex min-w-0 flex-wrap items-end justify-between gap-x-3 gap-y-1">
+				<h2 class="min-w-0 text-lg font-semibold">{t.dashboard.lists}</h2>
+				<a class="shrink-0 text-sm font-semibold text-gold" href={resolve('/app/lists')}>{t.dashboard.openLists}</a>
 			</div>
 			{#if lists.length === 0}
 				<section class={[panelClass, 'p-5']}>
 					<p class="text-sm text-fog">{t.dashboard.listsEmpty}</p>
 				</section>
 			{:else}
-				<ul class="space-y-2">
+				<ul class="w-full min-w-0 space-y-2">
 					{#each lists as list (list.id)}
-						<li>
+						<li class="min-w-0">
 							<a
 								class={[
 									panelClass,
-									'flex items-center justify-between gap-3 p-4 hover:border-gold/40'
+									'flex w-full min-w-0 items-center justify-between gap-3 overflow-hidden p-4 hover:border-gold/40'
 								]}
 								href={resolve(`/app/lists/${list.id}`)}
 							>
-								<p class="min-w-0 font-semibold hyphens-auto">
+								<p class="min-w-0 truncate font-semibold hyphens-auto">
 									{#if list.emoji}<span class="mr-1">{list.emoji}</span>{/if}{list.name}
 								</p>
 								<span class="shrink-0 text-sm text-gold"
@@ -151,24 +199,25 @@
 			{/if}
 		</div>
 		<div class="min-w-0 space-y-3">
-			<div class="flex items-end justify-between gap-3">
-				<h2 class="text-lg font-semibold">{t.dashboard.recipes}</h2>
-				<a class="text-sm font-semibold text-gold" href={resolve('/app/recipes')}
-					>{t.dashboard.openRecipes}</a
-				>
+			<div class="flex min-w-0 flex-wrap items-end justify-between gap-x-3 gap-y-1">
+				<h2 class="min-w-0 text-lg font-semibold">{t.dashboard.recipes}</h2>
+				<a class="shrink-0 text-sm font-semibold text-gold" href={resolve('/app/recipes')}>{t.dashboard.openRecipes}</a>
 			</div>
 			{#if recipes.length === 0}
 				<section class={[panelClass, 'p-5']}>
 					<p class="text-sm text-fog">{t.dashboard.recipesEmpty}</p>
 				</section>
 			{:else}
-				<ul class="space-y-2">
+				<ul class="w-full min-w-0 space-y-2">
 					{#each recipes as recipe (recipe.id)}
 						{@const per = nutritionPerServing(recipe)}
 						{@const last = lastCookedEvent(snap, recipe.id)}
-						<li>
+						<li class="min-w-0">
 							<a
-								class={[panelClass, 'flex min-w-0 gap-3 overflow-hidden hover:border-gold/40']}
+								class={[
+									panelClass,
+									'flex w-full min-w-0 overflow-hidden hover:border-gold/40'
+								]}
 								href={resolve(`/app/recipes/${recipe.id}`)}
 							>
 								{#if recipe.image_url}
@@ -181,9 +230,9 @@
 										🍽️
 									</div>
 								{/if}
-								<div class="min-w-0 flex-1 py-3 pr-3">
+								<div class="min-w-0 flex-1 overflow-hidden py-3 pr-3">
 									<p class="truncate font-semibold">{recipe.title}</p>
-									<p class="text-xs text-fog">
+									<p class="truncate text-xs text-fog">
 										{#if recipe.calories}{formatNutrition(per.calories)} {t.recipes.kcal}{/if}
 										{#if last}
 											· {fill(t.recipes.lastCooked, {
@@ -201,9 +250,9 @@
 	</section>
 
 	<section class="min-w-0 space-y-3">
-		<div class="flex items-end justify-between gap-3">
-			<h2 class="text-lg font-semibold">{t.dashboard.recentCooks}</h2>
-			<a class="text-sm font-semibold text-gold" href={resolve('/app/recipes/timeline')}
+		<div class="flex min-w-0 flex-wrap items-end justify-between gap-x-3 gap-y-1">
+			<h2 class="min-w-0 text-lg font-semibold">{t.dashboard.recentCooks}</h2>
+			<a class="shrink-0 text-sm font-semibold text-gold" href={resolve('/app/recipes/timeline')}
 				>{t.recipes.timelineNav}</a
 			>
 		</div>

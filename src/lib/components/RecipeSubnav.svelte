@@ -10,6 +10,11 @@
 	const links = $derived([
 		{ href: '/app/recipes' as const, label: t.recipes.heading, match: path === '/app/recipes' },
 		{
+			href: '/app/recipes/plan' as const,
+			label: t.plan.nav,
+			match: path.startsWith('/app/recipes/plan')
+		},
+		{
 			href: '/app/recipes/cookbooks' as const,
 			label: t.recipes.cookbooks,
 			match: path.startsWith('/app/recipes/cookbooks')

@@ -13,10 +13,12 @@
 		listSummaries,
 		memberName,
 		persistListCreate,
+		persistPublicCommentDelete,
 		persistRatingUpsert,
 		persistRecipeCommentAdd,
 		persistRecipeCommentDelete,
 		persistRecipeDelete,
+		persistRecipeShare,
 		persistRecipeToList,
 		persistTimelineAdd,
 		persistTimelineDelete,
@@ -42,6 +44,9 @@
 		selectClass
 	} from '$lib/ui';
 	import type { ShoppingList } from '$lib/types/app';
+	import { env } from '$env/dynamic/public';
+	import { newPublicSlug, publicRecipeUrl } from '$lib/meal-plan';
+	import { shareOrCopy } from '$lib/share';
 
 	let { data } = $props();
 	const i18n = getI18n();
@@ -60,6 +65,8 @@
 	let cookedRating = $state(0);
 	let savingCook = $state(false);
 	let commentBusy = $state(false);
+	let shareBusy = $state(false);
+	let shareMessage = $state('');
 
 	$effect(() => {
 		if (recipe && servings === 0) {
@@ -78,6 +85,15 @@
 			...comment,
 			author: memberName(snap, comment.user_id) || t.household.member
 		}))
+	);
+	const shareUrl = $derived(
+		recipe?.public_slug
+			? publicRecipeUrl(
+					recipe.public_slug,
+					env.PUBLIC_BASE_URL?.replace(/\/$/, '') ||
+						(typeof window !== 'undefined' ? window.location.origin : '')
+				)
+			: ''
 	);
 
 	async function setRating(next: number) {
@@ -192,6 +208,40 @@
 		await persistRecipeDelete(data.supabase, data.user.id, recipe.id, recipe.image_path);
 		await goto(resolve('/app/recipes'));
 	}
+
+	async function setPublic(next: boolean) {
+		if (!data.supabase || !data.user || !recipe) return;
+		shareBusy = true;
+		shareMessage = '';
+		const slug = recipe.public_slug || newPublicSlug();
+		try {
+			await persistRecipeShare(data.supabase, data.user.id, recipe.id, next, slug);
+		} catch {
+			shareMessage = t.errors.generic;
+		}
+		shareBusy = false;
+	}
+
+	async function sharePublic() {
+		if (!recipe?.public_slug) return;
+		const url =
+			shareUrl ||
+			publicRecipeUrl(
+				recipe.public_slug,
+				typeof window !== 'undefined' ? window.location.origin : ''
+			);
+		try {
+			const result = await shareOrCopy(recipe.title, t.recipes.fromBasement, url);
+			if (result === 'copied') shareMessage = t.recipes.linkCopied;
+		} catch {
+			shareMessage = t.errors.generic;
+		}
+	}
+
+	async function removePublicComment(id: string) {
+		if (!data.supabase || !data.user) return;
+		await persistPublicCommentDelete(data.supabase, data.user.id, id);
+	}
 </script>
 
 <svelte:head><title>{recipe ? `${recipe.title} · Basement` : t.recipes.title}</title></svelte:head>
@@ -235,6 +285,34 @@
 				>
 			</div>
 		</div>
+
+		<section class={[panelClass, 'space-y-3 p-5']}>
+			<div class="flex flex-wrap items-start justify-between gap-3">
+				<div>
+					<p class="font-semibold">{recipe.is_public ? t.recipes.publicOn : t.recipes.publicOff}</p>
+					<p class="mt-1 text-sm text-fog">{t.recipes.publicHelp}</p>
+				</div>
+				<button
+					class={recipe.is_public ? btnGhost : btnPrimary}
+					disabled={shareBusy}
+					type="button"
+					onclick={() => void setPublic(!recipe.is_public)}
+				>
+					{recipe.is_public ? t.recipes.makePrivate : t.recipes.makePublic}
+				</button>
+			</div>
+			{#if recipe.is_public && recipe.public_slug}
+				<div class="flex flex-wrap gap-2">
+					<button class={btnGhost} type="button" onclick={() => void sharePublic()}>
+						{t.recipes.shareRecipe}
+					</button>
+					<a class={btnQuiet} href={resolve(`/r/${recipe.public_slug}`)}>{t.recipes.openPublic}</a>
+				</div>
+			{/if}
+			{#if shareMessage}
+				<p class="text-sm text-mint">{shareMessage}</p>
+			{/if}
+		</section>
 
 		{#if recipe.image_url}
 			<img src={recipe.image_url} alt="" class="max-h-80 w-full rounded-3xl object-cover" />
@@ -411,6 +489,30 @@
 				onsubmit={(body) => void addComment(body)}
 				ondelete={(id) => void removeComment(id)}
 			/>
+		{/if}
+
+		{#if detail.publicComments.length > 0}
+			<section class="space-y-3">
+				<h2 class="text-lg font-semibold">{t.recipes.publicComments}</h2>
+				<ul class="space-y-2">
+					{#each detail.publicComments as comment (comment.id)}
+						<li class={[panelClass, 'p-4']}>
+							<div class="flex items-start justify-between gap-3">
+								<p class="text-sm font-semibold">{comment.author_name}</p>
+								<p class="text-xs text-fog">{formatDay(comment.created_at, i18n.locale)}</p>
+							</div>
+							<p class="mt-2 leading-6">{comment.body}</p>
+							<button
+								class="mt-2 text-sm font-semibold text-coral"
+								type="button"
+								onclick={() => void removePublicComment(comment.id)}
+							>
+								{t.recipes.commentDelete}
+							</button>
+						</li>
+					{/each}
+				</ul>
+			</section>
 		{/if}
 	</div>
 {/if}

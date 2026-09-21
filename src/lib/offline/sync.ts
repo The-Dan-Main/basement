@@ -9,6 +9,7 @@ import {
 	hydrateIngredient,
 	hydrateRecipe,
 	planRecipeListAdds,
+	collapseListAdds,
 	toRecipeRow,
 	type ListAddInput
 } from '$lib/recipes';
@@ -24,11 +25,13 @@ import type {
 	HouseholdInvite,
 	ItemCatalog,
 	ListItem,
+	MealPlanEntry,
 	Member,
 	Profile,
 	Recipe,
 	RecipeComment,
 	RecipeIngredient,
+	RecipePublicComment,
 	RecipeRating,
 	RecipeStep,
 	RecipeTimelineEvent,
@@ -53,9 +56,11 @@ export type OfflineSnapshot = {
 	recipeRatings: RecipeRating[];
 	recipeTimeline: RecipeTimelineEvent[];
 	recipeComments: RecipeComment[];
+	recipePublicComments: RecipePublicComment[];
 	cookbookComments: CookbookComment[];
 	chores: Chore[];
 	choreCompletions: ChoreCompletion[];
+	mealPlan: MealPlanEntry[];
 };
 
 export type OutboxPayload =
@@ -90,7 +95,10 @@ export type OutboxPayload =
 	| { kind: 'choreUpsert'; chore: Chore }
 	| { kind: 'choreDelete'; choreId: string }
 	| { kind: 'choreComplete'; completion: ChoreCompletion }
-	| { kind: 'choreUncomplete'; completionId: string };
+	| { kind: 'choreUncomplete'; completionId: string }
+	| { kind: 'mealPlanUpsert'; entry: MealPlanEntry }
+	| { kind: 'mealPlanDelete'; entryId: string }
+	| { kind: 'recipePatch'; recipeId: string; patch: Partial<Recipe> };
 
 const SNAP_KEY = 'snapshot';
 
@@ -113,9 +121,11 @@ export function emptySnapshot(userId: string, profile: Profile): OfflineSnapshot
 		recipeRatings: [],
 		recipeTimeline: [],
 		recipeComments: [],
+		recipePublicComments: [],
 		cookbookComments: [],
 		chores: [],
-		choreCompletions: []
+		choreCompletions: [],
+		mealPlan: []
 	};
 }
 
@@ -137,9 +147,11 @@ function hydrateSnapshot(snap: OfflineSnapshot): OfflineSnapshot {
 		recipeRatings: snap.recipeRatings ?? [],
 		recipeTimeline: snap.recipeTimeline ?? [],
 		recipeComments: snap.recipeComments ?? [],
+		recipePublicComments: snap.recipePublicComments ?? [],
 		cookbookComments: snap.cookbookComments ?? [],
 		chores: snap.chores ?? [],
-		choreCompletions: snap.choreCompletions ?? []
+		choreCompletions: snap.choreCompletions ?? [],
+		mealPlan: snap.mealPlan ?? []
 	};
 }
 
@@ -333,6 +345,20 @@ function applyOutbox(snap: OfflineSnapshot, payloads: OutboxPayload[]): OfflineS
 				...next,
 				choreCompletions: next.choreCompletions.filter((row) => row.id !== payload.completionId)
 			};
+		} else if (payload.kind === 'mealPlanUpsert') {
+			next = applyMealPlan(next, payload.entry);
+		} else if (payload.kind === 'mealPlanDelete') {
+			next = {
+				...next,
+				mealPlan: next.mealPlan.filter((row) => row.id !== payload.entryId)
+			};
+		} else if (payload.kind === 'recipePatch') {
+			next = {
+				...next,
+				recipes: next.recipes.map((recipe) =>
+					recipe.id === payload.recipeId ? { ...recipe, ...payload.patch } : recipe
+				)
+			};
 		}
 	}
 	return next;
@@ -412,6 +438,13 @@ function applyChoreCompletion(snap: OfflineSnapshot, completion: ChoreCompletion
 	};
 }
 
+function applyMealPlan(snap: OfflineSnapshot, entry: MealPlanEntry): OfflineSnapshot {
+	return {
+		...snap,
+		mealPlan: [entry, ...snap.mealPlan.filter((row) => row.id !== entry.id)]
+	};
+}
+
 function applyRating(snap: OfflineSnapshot, rating: RecipeRating): OfflineSnapshot {
 	return {
 		...snap,
@@ -433,7 +466,9 @@ function removeRecipeFromSnap(snap: OfflineSnapshot, recipeId: string): OfflineS
 		cookbookRecipes: snap.cookbookRecipes.filter((row) => row.recipe_id !== recipeId),
 		recipeRatings: snap.recipeRatings.filter((row) => row.recipe_id !== recipeId),
 		recipeTimeline: snap.recipeTimeline.filter((row) => row.recipe_id !== recipeId),
-		recipeComments: snap.recipeComments.filter((row) => row.recipe_id !== recipeId)
+		recipeComments: snap.recipeComments.filter((row) => row.recipe_id !== recipeId),
+		recipePublicComments: snap.recipePublicComments.filter((row) => row.recipe_id !== recipeId),
+		mealPlan: snap.mealPlan.filter((row) => row.recipe_id !== recipeId)
 	};
 }
 
@@ -498,9 +533,11 @@ export async function pullSnapshot(
 		recipeRatings,
 		recipeTimeline,
 		recipeComments,
+		recipePublicComments,
 		cookbookComments,
 		chores,
 		choreCompletions,
+		mealPlan,
 		profileRow
 	] = await Promise.all([
 		fetchAllRows<Household>((from, to) =>
@@ -600,6 +637,13 @@ export async function pullSnapshot(
 				.order('created_at', { ascending: false })
 				.range(from, to)
 		),
+		fetchAllRows<RecipePublicComment>((from, to) =>
+			supabase
+				.from('recipe_public_comments')
+				.select('*')
+				.order('created_at', { ascending: false })
+				.range(from, to)
+		),
 		fetchAllRows<CookbookComment>((from, to) =>
 			supabase
 				.from('cookbook_comments')
@@ -620,6 +664,13 @@ export async function pullSnapshot(
 				.from('chore_completions')
 				.select('*')
 				.order('completed_at', { ascending: false })
+				.range(from, to)
+		),
+		fetchAllRows<MealPlanEntry>((from, to) =>
+			supabase
+				.from('meal_plan_entries')
+				.select('*')
+				.order('plan_date', { ascending: true })
 				.range(from, to)
 		),
 		supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
@@ -663,9 +714,11 @@ export async function pullSnapshot(
 		recipeRatings,
 		recipeTimeline,
 		recipeComments,
+		recipePublicComments,
 		cookbookComments,
 		chores,
-		choreCompletions
+		choreCompletions,
+		mealPlan
 	});
 	const merged = await snapshotWithOutbox(next);
 	publishProfile(merged.profile);
@@ -767,10 +820,10 @@ async function pushPayload(supabase: BasementClient, payload: OutboxPayload) {
 			.eq('id', payload.householdId);
 		if (error) throw error;
 	} else if (payload.kind === 'recipeUpsert') {
-		const { error: recipeError } = await supabase
-			.from('recipes')
-			.upsert(toRecipeRow(payload.recipe));
-		if (recipeError) throw recipeError;
+		await writeRow((row) => supabase.from('recipes').upsert(row), toRecipeRow(payload.recipe), [
+			'is_public',
+			'public_slug'
+		]);
 		const { error: clearIngredients } = await supabase
 			.from('recipe_ingredients')
 			.delete()
@@ -849,6 +902,19 @@ async function pushPayload(supabase: BasementClient, payload: OutboxPayload) {
 	} else if (payload.kind === 'choreUncomplete') {
 		const { error } = await supabase.from('chore_completions').delete().eq('id', payload.completionId);
 		if (error) throw error;
+	} else if (payload.kind === 'mealPlanUpsert') {
+		const { error } = await supabase.from('meal_plan_entries').upsert(payload.entry);
+		if (error) throw error;
+	} else if (payload.kind === 'mealPlanDelete') {
+		const { error } = await supabase.from('meal_plan_entries').delete().eq('id', payload.entryId);
+		if (error) throw error;
+	} else if (payload.kind === 'recipePatch') {
+		const { image_url: _imageUrl, ...row } = payload.patch;
+		await writeRow(
+			(next) => supabase.from('recipes').update(next).eq('id', payload.recipeId),
+			row,
+			['is_public', 'public_slug']
+		);
 	}
 }
 
@@ -1224,6 +1290,59 @@ export async function persistChoreUncomplete(
 	await pushOrQueue(supabase, { kind: 'choreUncomplete', completionId });
 }
 
+export async function persistMealPlanUpsert(
+	supabase: BasementClient,
+	userId: string,
+	entry: MealPlanEntry
+) {
+	await mutateSnapshot(userId, (snap) => applyMealPlan(snap, entry));
+	await pushOrQueue(supabase, { kind: 'mealPlanUpsert', entry });
+}
+
+export async function persistMealPlanDelete(
+	supabase: BasementClient,
+	userId: string,
+	entryId: string
+) {
+	await mutateSnapshot(userId, (snap) => ({
+		...snap,
+		mealPlan: snap.mealPlan.filter((row) => row.id !== entryId)
+	}));
+	await pushOrQueue(supabase, { kind: 'mealPlanDelete', entryId });
+}
+
+export async function persistRecipeShare(
+	supabase: BasementClient,
+	userId: string,
+	recipeId: string,
+	isPublic: boolean,
+	slug = ''
+) {
+	const patch: Partial<Recipe> = {
+		is_public: isPublic,
+		public_slug: slug,
+		updated_at: nowIso()
+	};
+	await mutateSnapshot(userId, (snap) => ({
+		...snap,
+		recipes: snap.recipes.map((recipe) => (recipe.id === recipeId ? { ...recipe, ...patch } : recipe))
+	}));
+	await pushOrQueue(supabase, { kind: 'recipePatch', recipeId, patch });
+}
+
+export async function persistPublicCommentDelete(
+	supabase: BasementClient,
+	userId: string,
+	commentId: string
+) {
+	await mutateSnapshot(userId, (snap) => ({
+		...snap,
+		recipePublicComments: snap.recipePublicComments.filter((row) => row.id !== commentId)
+	}));
+	const { error } = await supabase.from('recipe_public_comments').delete().eq('id', commentId);
+	if (error) throw error;
+}
+
 export async function persistRecipeToList(
 	supabase: BasementClient,
 	userId: string,
@@ -1240,7 +1359,7 @@ export async function persistRecipeToList(
 			updated_at: nowIso()
 		});
 	const existing = snap.items.filter((item) => item.list_id === list.id);
-	const plan = planRecipeListAdds(existing, ingredients);
+	const plan = planRecipeListAdds(existing, collapseListAdds(ingredients));
 	for (const update of plan.updates) {
 		await persistItemUpdate(supabase, userId, update.itemId, {
 			quantity: update.quantity,
@@ -1380,6 +1499,9 @@ export function recipeDetail(snap: OfflineSnapshot, recipeId: string) {
 	const comments = snap.recipeComments
 		.filter((row) => row.recipe_id === recipeId)
 		.sort((a, b) => b.created_at.localeCompare(a.created_at));
+	const publicComments = snap.recipePublicComments
+		.filter((row) => row.recipe_id === recipeId)
+		.sort((a, b) => b.created_at.localeCompare(a.created_at));
 	const timeline = snap.recipeTimeline
 		.filter((row) => row.recipe_id === recipeId && isCookedEvent(row))
 		.sort((a, b) => b.cooked_at.localeCompare(a.cooked_at));
@@ -1391,7 +1513,23 @@ export function recipeDetail(snap: OfflineSnapshot, recipeId: string) {
 			)
 		)
 		.sort((a, b) => a.title.localeCompare(b.title));
-	return { recipe, ingredients, steps, comments, timeline, ratings, cookbooks };
+	return { recipe, ingredients, steps, comments, publicComments, timeline, ratings, cookbooks };
+}
+
+export function mealPlanForRange(snap: OfflineSnapshot, householdId: string | undefined, start: string, end: string) {
+	return snap.mealPlan
+		.filter(
+			(row) =>
+				(!householdId || row.household_id === householdId) &&
+				row.plan_date >= start &&
+				row.plan_date <= end
+		)
+		.sort(
+			(a, b) =>
+				a.plan_date.localeCompare(b.plan_date) ||
+				a.sort_order - b.sort_order ||
+				a.created_at.localeCompare(b.created_at)
+		);
 }
 
 export function cookbooksForHousehold(snap: OfflineSnapshot, householdId?: string) {

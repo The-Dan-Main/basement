@@ -18,7 +18,9 @@ export type {
 	Cookbook,
 	CookbookComment,
 	CookbookRecipe,
+	MealPlanEntry,
 	RecipeComment,
+	RecipePublicComment,
 	RecipeRating,
 	RecipeTimelineEvent,
 	SiteContent

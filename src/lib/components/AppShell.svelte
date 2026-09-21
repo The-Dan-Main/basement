@@ -58,16 +58,16 @@
 	const mobileLinks = $derived(links.filter((link) => link.href !== '/app/settings'));
 </script>
 
-<div class="min-h-dvh bg-ink">
+<div class="min-h-dvh overflow-x-clip bg-ink">
 	<OfflineBanner />
 	<header
-		class="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-line/80 bg-ink/85 px-4 py-3 backdrop-blur-md md:px-6"
+		class="sticky top-0 z-30 flex min-w-0 items-center justify-between gap-3 overflow-x-clip border-b border-line/80 bg-ink/85 px-4 py-3 backdrop-blur-md md:px-6"
 		style="padding-top: max(0.75rem, env(safe-area-inset-top))"
 	>
-		<a href={resolve('/app')} class="text-paper"><Logo /></a>
-		<div class="flex items-center gap-2 text-sm">
+		<a href={resolve('/app')} class="min-w-0 shrink text-paper"><Logo /></a>
+		<div class="flex min-w-0 items-center gap-2 text-sm">
 			<LanguageSwitcher />
-			<span class="rounded-full bg-white/5 px-3 py-1 text-fog">{live.display_name}</span>
+			<span class="max-w-24 truncate rounded-full bg-white/5 px-3 py-1 text-fog">{live.display_name}</span>
 			<a
 				class="grid h-9 w-9 place-items-center rounded-full border border-line text-fog hover:text-paper md:hidden"
 				href={resolve('/app/settings')}
@@ -93,7 +93,7 @@
 		</div>
 	</header>
 
-	<div class="mx-auto flex max-w-6xl">
+	<div class="mx-auto flex w-full min-w-0 max-w-6xl">
 		<nav class="sticky top-20 hidden w-48 shrink-0 flex-col gap-1 self-start p-4 md:flex">
 			{#each links as link (link.href)}
 				<a
@@ -111,7 +111,7 @@
 			</form>
 		</nav>
 
-		<main class="min-w-0 flex-1 px-4 py-6 pb-28 md:px-6 md:pb-10">
+		<main class="min-w-0 flex-1 overflow-x-clip px-4 py-6 pb-28 md:px-6 md:pb-10">
 			{@render children()}
 		</main>
 	</div>

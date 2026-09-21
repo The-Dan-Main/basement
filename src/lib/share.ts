@@ -27,17 +27,17 @@ function formatShareLine(mark: string, item: ListItem) {
 	return extra ? `${mark} ${item.name} · ${extra}` : `${mark} ${item.name}`;
 }
 
-export async function shareOrCopy(title: string, text: string) {
+export async function shareOrCopy(title: string, text: string, url?: string) {
 	if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
 		try {
-			await navigator.share({ title, text });
+			await navigator.share(url ? { title, text, url } : { title, text });
 			return 'shared' as const;
 		} catch (error) {
 			if (error instanceof DOMException && error.name === 'AbortError') return 'cancelled' as const;
 		}
 	}
 	if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-		await navigator.clipboard.writeText(text);
+		await navigator.clipboard.writeText(url || text);
 		return 'copied' as const;
 	}
 	throw new Error('share');

@@ -5,11 +5,13 @@
 	let {
 		value = $bindable(2),
 		min = 1,
-		max = 99
+		max = 99,
+		onchange
 	}: {
 		value?: number;
 		min?: number;
 		max?: number;
+		onchange?: (value: number) => void;
 	} = $props();
 
 	const i18n = getI18n();
@@ -17,6 +19,7 @@
 
 	function set(next: number) {
 		value = Math.min(max, Math.max(min, Math.round(next)));
+		onchange?.(value);
 	}
 </script>
 
