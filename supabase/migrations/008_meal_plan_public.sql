@@ -1,5 +1,5 @@
 -- Weekly meal plan and unlisted public recipe pages.
--- Additive. Safe to run on a database that already has 001–006.
+-- Additive. Safe to run on a database that already has 001–007.
 
 alter table public.recipes
 	add column if not exists is_public boolean not null default false,

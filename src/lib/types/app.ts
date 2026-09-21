@@ -22,7 +22,8 @@ export type {
 	RecipeComment,
 	RecipePublicComment,
 	RecipeRating,
-	RecipeTimelineEvent
+	RecipeTimelineEvent,
+	SiteContent
 } from '$lib/types/database.types';
 
 export type Recipe = RecipeRow & { image_url?: string };

@@ -134,7 +134,9 @@
 		{#if chores.length === 0}
 			<section class={[panelClass, 'p-5']}>
 				<p class="text-sm text-fog">{t.dashboard.choresEmpty}</p>
-				<a class={['mt-3 inline-flex', btnGhost]} href={resolve('/app/chores/new')}>{t.chores.new}</a>
+				<a class={['mt-3 inline-flex', btnGhost]} href={resolve('/app/chores/new')}
+					>{t.chores.new}</a
+				>
 			</section>
 		{:else if due.length === 0}
 			<p class="text-sm text-fog">{t.dashboard.allCaughtUp}</p>
@@ -184,7 +186,7 @@
 								]}
 								href={resolve(`/app/lists/${list.id}`)}
 							>
-								<p class="min-w-0 truncate font-semibold">
+								<p class="min-w-0 truncate font-semibold hyphens-auto">
 									{#if list.emoji}<span class="mr-1">{list.emoji}</span>{/if}{list.name}
 								</p>
 								<span class="shrink-0 text-sm text-gold"
@@ -221,7 +223,10 @@
 								{#if recipe.image_url}
 									<img src={recipe.image_url} alt="" class="h-20 w-20 shrink-0 object-cover" />
 								{:else}
-									<div class="grid h-20 w-20 shrink-0 place-items-center bg-ink-soft" aria-hidden="true">
+									<div
+										class="grid h-20 w-20 shrink-0 place-items-center bg-ink-soft"
+										aria-hidden="true"
+									>
 										🍽️
 									</div>
 								{/if}
@@ -230,7 +235,9 @@
 									<p class="truncate text-xs text-fog">
 										{#if recipe.calories}{formatNutrition(per.calories)} {t.recipes.kcal}{/if}
 										{#if last}
-											· {fill(t.recipes.lastCooked, { date: formatDay(last.cooked_at, i18n.locale) })}
+											· {fill(t.recipes.lastCooked, {
+												date: formatDay(last.cooked_at, i18n.locale)
+											})}
 										{/if}
 									</p>
 								</div>
@@ -255,14 +262,14 @@
 			<ol class="space-y-2">
 				{#each recentCooks as event (event.id)}
 					{@const recipe = snap.recipes.find((row) => row.id === event.recipe_id)}
-					<li class={[panelClass, 'min-w-0 p-4']}>
+					<li class={[panelClass, 'min-w-0 overflow-hidden p-4']}>
 						<p class="text-xs text-fog">
 							{formatDay(event.at, i18n.locale)}
 							{#if memberName(snap, event.user_id)}· {memberName(snap, event.user_id)}{/if}
 						</p>
 						{#if recipe}
 							<a
-								class="mt-1 block truncate font-semibold text-gold"
+								class="mt-1 block min-w-0 break-words font-semibold text-gold"
 								href={resolve(`/app/recipes/${recipe.id}`)}>{recipe.title}</a
 							>
 						{/if}
