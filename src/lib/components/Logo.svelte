@@ -1,5 +1,5 @@
 <script lang="ts">
-	let { size = 'md' }: { size?: 'sm' | 'md' | 'lg' } = $props();
+	let { size = 'md', name = 'Basement' }: { size?: 'sm' | 'md' | 'lg'; name?: string } = $props();
 
 	const box = $derived(size === 'lg' ? 'h-11 w-11' : size === 'sm' ? 'h-8 w-8' : 'h-9 w-9');
 	const mark = $derived(size === 'lg' ? 'h-6 w-6' : size === 'sm' ? 'h-4 w-4' : 'h-5 w-5');
@@ -21,5 +21,5 @@
 			<rect x="10" y="19" width="11" height="2" rx="1" fill="#061018" opacity="0.35" />
 		</svg>
 	</span>
-	<span>Basement</span>
+	<span>{name}</span>
 </span>

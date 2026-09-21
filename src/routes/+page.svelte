@@ -3,16 +3,19 @@
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 	import SetupPanel from '$lib/components/SetupPanel.svelte';
 	import { getI18n } from '$lib/i18n/i18n.svelte';
+	import { landingFromContent, siteNameFrom } from '$lib/site-content';
 	import { btnGhost, btnPrimary, panelClass } from '$lib/ui';
 	import { resolve } from '$app/paths';
 
 	let { data } = $props();
 	const i18n = getI18n();
 	const t = $derived(i18n.t);
+	const landing = $derived(landingFromContent(data.siteContent, i18n.locale));
+	const siteName = $derived(siteNameFrom(data.siteContent, i18n.locale));
 </script>
 
 <svelte:head>
-	<title>{t.landing.title}</title>
+	<title>{landing.title}</title>
 </svelte:head>
 
 <div class="relative overflow-hidden">
@@ -20,7 +23,7 @@
 	<div class="glow glow-b" aria-hidden="true"></div>
 
 	<header class="relative mx-auto flex max-w-6xl items-center justify-between px-4 py-5 md:px-6">
-		<Logo size="lg" />
+		<Logo size="lg" name={siteName} />
 		<nav class="flex items-center gap-2">
 			<LanguageSwitcher />
 			<a class={btnGhost} href={resolve('/login')}>{t.nav.logIn}</a>
@@ -32,18 +35,18 @@
 		<section class="grid items-center gap-10 lg:grid-cols-[1.15fr_0.85fr]">
 			<div class="space-y-6">
 				<p class="text-xs font-semibold tracking-[0.28em] text-gold uppercase">
-					{t.landing.kicker}
+					{landing.kicker}
 				</p>
 				<h1 class="max-w-xl text-4xl leading-[1.05] font-semibold tracking-tight sm:text-6xl">
-					{t.landing.heading}<br class="hidden sm:block" />
-					{t.landing.headingBreak}
+					{landing.heading}<br class="hidden sm:block" />
+					{landing.headingBreak}
 				</h1>
 				<p class="max-w-lg text-base leading-7 text-fog sm:text-lg">
-					{t.landing.body}
+					{landing.body}
 				</p>
 				<div class="flex flex-wrap gap-3">
-					<a class={btnPrimary} href={resolve('/signup')}>{t.landing.start}</a>
-					<a class={btnGhost} href={resolve('/login')}>{t.landing.haveAccount}</a>
+					<a class={btnPrimary} href={resolve('/signup')}>{landing.start}</a>
+					<a class={btnGhost} href={resolve('/login')}>{landing.haveAccount}</a>
 				</div>
 			</div>
 
@@ -59,13 +62,13 @@
 					]}
 				>
 					<div class="flex items-center justify-between">
-						<p class="text-xs tracking-[0.2em] text-gold uppercase">{t.landing.previewKicker}</p>
+						<p class="text-xs tracking-[0.2em] text-gold uppercase">{landing.previewKicker}</p>
 						<span class="rounded-full bg-gold/15 px-2.5 py-1 text-xs font-semibold text-gold"
-							>{t.landing.previewLeft}</span
+							>{landing.previewLeft}</span
 						>
 					</div>
 					<ul class="mt-6 space-y-3">
-						{#each t.landing.preview as item (item.name)}
+						{#each landing.preview as item (item.name)}
 							<li class="flex items-center gap-3 rounded-2xl bg-ink-soft/80 px-3 py-3">
 								<span
 									class={[
@@ -94,7 +97,7 @@
 							</li>
 						{/each}
 					</ul>
-					<p class="mt-5 text-xs text-fog">{t.landing.previewFoot}</p>
+					<p class="mt-5 text-xs text-fog">{landing.previewFoot}</p>
 				</div>
 			</div>
 		</section>
@@ -104,7 +107,7 @@
 		{/if}
 
 		<section class="grid gap-3 md:grid-cols-3">
-			{#each t.landing.steps as step, index (step.title)}
+			{#each landing.steps as step, index (step.title)}
 				<article class={[panelClass, 'p-5']}>
 					<p class="text-xs font-semibold tracking-[0.2em] text-gold uppercase">
 						0{index + 1}
@@ -116,7 +119,7 @@
 		</section>
 
 		<section class="grid gap-4 md:grid-cols-3">
-			{#each t.landing.features as feature (feature.title)}
+			{#each landing.features as feature (feature.title)}
 				<article class={[panelClass, 'p-6']}>
 					<h2 class="text-lg font-semibold">{feature.title}</h2>
 					<p class="mt-3 text-sm leading-6 text-fog">{feature.body}</p>
