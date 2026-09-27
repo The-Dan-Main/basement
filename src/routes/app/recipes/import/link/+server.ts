@@ -1,4 +1,4 @@
-import { error, json } from '@sveltejs/kit';
+import { error, isHttpError, json } from '@sveltejs/kit';
 import {
 	AI_RECIPE_SCHEMA,
 	extractRecipePage,
@@ -78,9 +78,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			image
 		});
 	} catch (err) {
-		if (err && typeof err === 'object' && 'status' in err) throw err;
 		if (err instanceof PageFetchError) error(err.status, err.message);
 		if (err instanceof GeminiError) error(err.status, err.message);
+		if (isHttpError(err)) throw err;
 		error(502, 'gemini');
 	}
 };

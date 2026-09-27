@@ -1,4 +1,4 @@
-import { error, json } from '@sveltejs/kit';
+import { error, isHttpError, json } from '@sveltejs/kit';
 import {
 	AI_CHAT_SCHEMA,
 	normalizeAiRecipe,
@@ -78,8 +78,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (!parsed) error(502, 'gemini');
 		return json(parsed);
 	} catch (err) {
-		if (err && typeof err === 'object' && 'status' in err) throw err;
 		if (err instanceof GeminiError) error(err.status, err.message);
+		if (isHttpError(err)) throw err;
 		error(502, 'gemini');
 	}
 };
