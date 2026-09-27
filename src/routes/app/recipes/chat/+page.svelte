@@ -54,7 +54,7 @@
 		busy = true;
 		error = '';
 		try {
-			const response = await fetch(resolve('/app/recipes/chat'), {
+			const response = await fetch(resolve('/app/recipes/chat/ask'), {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({
