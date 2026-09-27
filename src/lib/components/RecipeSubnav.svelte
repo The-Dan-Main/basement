@@ -25,6 +25,11 @@
 			match: path.startsWith('/app/recipes/timeline')
 		},
 		{
+			href: '/app/recipes/chat' as const,
+			label: t.recipes.chatNav,
+			match: path.startsWith('/app/recipes/chat')
+		},
+		{
 			href: '/app/recipes/import' as const,
 			label: t.recipes.import,
 			match: path.startsWith('/app/recipes/import')

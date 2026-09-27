@@ -1,6 +1,10 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import RecipeDraftCard from '$lib/components/RecipeDraftCard.svelte';
 	import RecipeSubnav from '$lib/components/RecipeSubnav.svelte';
+	import type { AiRecipeDraft } from '$lib/ai-recipe';
+	import { aiDraftToMealie, imageFromPayload } from '$lib/ai-recipe-persist';
 	import { persistMealieDrafts } from '$lib/import-persist';
 	import { getI18n } from '$lib/i18n/i18n.svelte';
 	import { fill } from '$lib/i18n/locales';
@@ -27,6 +31,10 @@
 	let baseUrl = $state('');
 	let token = $state('');
 	let remote = $state<MealieListItem[]>([]);
+	let linkUrl = $state('');
+	let linkDraft = $state<AiRecipeDraft | null>(null);
+	let linkKey = $state('');
+	let linkImage = $state<{ name: string; type: string; base64: string } | null>(null);
 
 	function onFiles(event: Event) {
 		const input = event.currentTarget as HTMLInputElement;
@@ -88,6 +96,76 @@
 		busy = false;
 	}
 
+	function linkError(status: number) {
+		if (status === 503) return t.errors.geminiMissing;
+		if (status === 400) return t.errors.importLinkBad;
+		if (status === 422) return t.errors.importNoRecipe;
+		return t.errors.importLink;
+	}
+
+	async function readLink() {
+		const url = linkUrl.trim();
+		if (!url) {
+			error = t.errors.importLinkBad;
+			return;
+		}
+		busy = true;
+		error = '';
+		message = '';
+		linkDraft = null;
+		try {
+			const response = await fetch(resolve('/app/recipes/import/link'), {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ url, locale: i18n.locale })
+			});
+			if (!response.ok) throw Object.assign(new Error('link'), { status: response.status });
+			const payload = (await response.json()) as {
+				recipe: AiRecipeDraft;
+				sourceKey: string;
+				image: { name: string; type: string; base64: string } | null;
+			};
+			linkDraft = payload.recipe;
+			linkKey = payload.sourceKey;
+			linkImage = payload.image;
+			message = t.recipes.importLinkPreview;
+		} catch (err) {
+			const status = err && typeof err === 'object' && 'status' in err ? Number(err.status) : 502;
+			error = linkError(status);
+		}
+		busy = false;
+	}
+
+	async function saveLink() {
+		if (!data.supabase || !data.user || !household || !linkDraft) return;
+		busy = true;
+		error = '';
+		message = '';
+		try {
+			const report = await persistMealieDrafts(
+				data.supabase,
+				data.user.id,
+				household.id,
+				[aiDraftToMealie(linkDraft, linkKey, imageFromPayload(linkImage))],
+				replace,
+				'link'
+			);
+			if (report.ids[0] && (report.imported || report.updated)) {
+				await goto(resolve(`/app/recipes/${report.ids[0]}`));
+				return;
+			}
+			message = fill(t.recipes.importResult, {
+				imported: report.imported,
+				updated: report.updated,
+				skipped: report.skipped,
+				failed: report.failed
+			});
+		} catch {
+			error = t.errors.importFailed;
+		}
+		busy = false;
+	}
+
 	async function importRemote() {
 		if (!remote.length) return;
 		busy = true;
@@ -129,6 +207,39 @@
 		<h1 class="text-3xl font-semibold tracking-tight">{t.recipes.importHeading}</h1>
 		<p class="mt-2 max-w-2xl text-fog">{t.recipes.importBody}</p>
 	</div>
+
+	<section class={[panelClass, 'space-y-4 p-5']}>
+		<h2 class="text-lg font-semibold">{t.recipes.importLink}</h2>
+		<p class="text-sm text-fog">{t.recipes.importLinkHelp}</p>
+		<label class={labelClass}>
+			<span>{t.recipes.importLinkUrl}</span>
+			<input
+				class={fieldClass}
+				bind:value={linkUrl}
+				placeholder={t.recipes.importLinkPlaceholder}
+				inputmode="url"
+				autocomplete="url"
+			/>
+		</label>
+		<div class="flex flex-wrap gap-2">
+			<button
+				class={btnPrimary}
+				disabled={busy || !linkUrl.trim()}
+				type="button"
+				onclick={() => void readLink()}
+			>
+				{busy && !linkDraft ? t.recipes.importLinkReading : t.recipes.importLinkRun}
+			</button>
+		</div>
+		{#if linkDraft}
+			<RecipeDraftCard
+				draft={linkDraft}
+				{busy}
+				actionLabel={busy ? t.recipes.importing : t.recipes.importLinkSave}
+				onaction={() => void saveLink()}
+			/>
+		{/if}
+	</section>
 
 	<section class={[panelClass, 'space-y-4 p-5']}>
 		<h2 class="text-lg font-semibold">{t.recipes.importFiles}</h2>

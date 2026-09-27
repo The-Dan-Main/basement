@@ -9,7 +9,8 @@ These notes apply to every coding agent working in this repository (Cursor Cloud
 - Offline-first: household data lives in the IndexedDB snapshot and outbox in `src/lib/offline/sync.ts`. New tables need types, pull, persist, outbox, and hydrate defaults so older snapshots still load.
 - Chores (`src/lib/chores.ts`) use frequency (every N weeks/months) and three intensities (light 5 / medium 10 / heavy 20). Completions award points and feed the household scoreboard.
 - Svelte 5 runes (`$state`, `$derived`, `$props`, `$bindable`). Do not use Svelte 4 `export let` or `on:click`.
-- Do not commit secrets. Environment values come from Cloud Agent secrets / `.env` (`PUBLIC_SUPABASE_*`, `SUPABASE_SERVICE_SECRET_KEY`, `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_ID`).
+- Do not commit secrets. Environment values come from Cloud Agent secrets / `.env` (`PUBLIC_SUPABASE_*`, `SUPABASE_SERVICE_SECRET_KEY`, `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_ID`, `GEMINI_API_KEY`).
+- Gemini features (`src/lib/server/gemini.ts`) stay server-only: link import at `/app/recipes/import` and the meal-prep chat at `/app/recipes/chat`.
 
 ## Supabase schema changes
 

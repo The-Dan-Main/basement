@@ -7,7 +7,7 @@
 	import { resolveSnapshot } from '$lib/offline/live.svelte';
 	import { averageRating, lastCookedEvent, recipesForHousehold } from '$lib/offline/sync';
 	import { formatNutrition, nutritionPerServing } from '$lib/recipes';
-	import { btnPrimary, panelClass } from '$lib/ui';
+	import { btnGhost, btnPrimary, panelClass } from '$lib/ui';
 
 	let { data } = $props();
 	const i18n = getI18n();
@@ -26,7 +26,10 @@
 			<h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">{t.recipes.heading}</h1>
 		</div>
 		{#if household}
-			<a class={btnPrimary} href={resolve('/app/recipes/new')}>{t.recipes.new}</a>
+			<div class="flex flex-wrap gap-2">
+				<a class={btnGhost} href={resolve('/app/recipes/chat')}>{t.recipes.newAi}</a>
+				<a class={btnPrimary} href={resolve('/app/recipes/new')}>{t.recipes.new}</a>
+			</div>
 		{/if}
 	</section>
 
