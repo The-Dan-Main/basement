@@ -8,7 +8,7 @@ import {
 	sourceKeyFromUrl
 } from '$lib/ai-recipe';
 import { fetchPublicImage, fetchPublicPage, PageFetchError } from '$lib/server/fetch-page';
-import { GeminiError, generateGeminiJson, isGeminiConfigured } from '$lib/server/gemini';
+import { GeminiError, generateGeminiJson, loadUserGeminiKey } from '$lib/server/gemini';
 import type { RequestHandler } from './$types';
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -31,8 +31,9 @@ Rules:
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const { user } = await locals.safeGetSession();
-	if (!user) error(401);
-	if (!isGeminiConfigured()) error(503, 'gemini-missing');
+	if (!user || !locals.supabase) error(401);
+	const apiKey = await loadUserGeminiKey(locals.supabase, user.id);
+	if (!apiKey) error(503, 'gemini-missing');
 
 	const body = asRecord(await request.json().catch(() => null)) ?? {};
 	const rawUrl = String(body.url ?? '').trim();
@@ -47,6 +48,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		const parsed = normalizeAiRecipe(
 			await generateGeminiJson({
+				apiKey,
 				system: SYSTEM,
 				schema: AI_RECIPE_SCHEMA as unknown as Record<string, unknown>,
 				temperature: 0.15,

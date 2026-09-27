@@ -8,6 +8,13 @@ export type ProfileRow = {
 	updated_at: string;
 };
 
+export type UserAiKeyRow = {
+	user_id: string;
+	gemini_api_key: string;
+	created_at: string;
+	updated_at: string;
+};
+
 export type HouseholdRow = {
 	id: string;
 	name: string;
@@ -469,6 +476,11 @@ export interface Database {
 					points: number;
 				},
 				Partial<ChoreCompletionRow>
+			>;
+			user_ai_keys: Table<
+				UserAiKeyRow,
+				{ user_id: string; gemini_api_key?: string },
+				Partial<Omit<UserAiKeyRow, 'user_id'>>
 			>;
 			site_content: Table<
 				SiteContentRow,

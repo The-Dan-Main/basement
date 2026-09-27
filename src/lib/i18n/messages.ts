@@ -106,8 +106,9 @@ const en = {
 		recipeAdded: 'Ingredients added to {name}.',
 		importFailed: 'Import failed. Check the files or Mealie token.',
 		importApi: 'Could not reach Mealie. Check the URL and token.',
-		geminiMissing: 'Gemini is not configured. Add GEMINI_API_KEY on the server.',
+		geminiMissing: 'Add your Gemini API key in Settings first.',
 		geminiFailed: 'Gemini could not finish that request. Try again in a moment.',
+		geminiKey: 'Enter a valid Gemini API key.',
 		importLink: 'Could not read that page. Check the URL or try another recipe.',
 		importNoRecipe: 'No recipe found on that page.',
 		importLinkBad: 'Enter a public http(s) recipe URL.',
@@ -192,7 +193,7 @@ const en = {
 			'Paste a public recipe link and Gemini cleans it up, or upload Mealie zip/JSON files, or pull from a running Mealie with an API token.',
 		importLink: 'Import from a link',
 		importLinkHelp:
-			'Gemini reads the page and turns it into a clean Basement recipe — ingredients, amounts, steps, and nutrition.',
+			'Gemini reads the page and turns it into a clean Basement recipe — ingredients, amounts, steps, and nutrition. Uses your personal key from Settings.',
 		importLinkUrl: 'Recipe URL',
 		importLinkPlaceholder: 'https://…',
 		importLinkRun: 'Read link',
@@ -387,7 +388,18 @@ const en = {
 		displayNameHelp: 'This is how household members see you.',
 		save: 'Save',
 		saving: 'Saving…',
-		saved: 'Saved.'
+		saved: 'Saved.',
+		gemini: 'Gemini',
+		geminiHelp:
+			'Your own Gemini API key for link import and the meal-prep chat. It stays on your account — the rest of the house cannot see or use it.',
+		geminiKey: 'API key',
+		geminiPlaceholder: 'AIza…',
+		geminiSave: 'Save key',
+		geminiClear: 'Remove key',
+		geminiSaved: 'Gemini key saved.',
+		geminiCleared: 'Gemini key removed.',
+		geminiHint: 'Saved key ending in {hint}',
+		geminiOpen: 'Add your Gemini key in Settings'
 	},
 	invite: {
 		title: 'Join household',
@@ -620,8 +632,9 @@ const de: typeof en = {
 		recipeAdded: 'Zutaten zu {name} hinzugefügt.',
 		importFailed: 'Import fehlgeschlagen. Dateien oder Mealie-Token prüfen.',
 		importApi: 'Mealie nicht erreichbar. URL und Token prüfen.',
-		geminiMissing: 'Gemini ist nicht eingerichtet. GEMINI_API_KEY auf dem Server setzen.',
+		geminiMissing: 'Zuerst den eigenen Gemini-API-Key unter Einstellungen hinterlegen.',
 		geminiFailed: 'Gemini hat die Anfrage nicht geschafft. Gleich nochmal versuchen.',
+		geminiKey: 'Einen gültigen Gemini-API-Key eingeben.',
 		importLink: 'Die Seite ließ sich nicht lesen. URL prüfen oder ein anderes Rezept versuchen.',
 		importNoRecipe: 'Auf der Seite war kein Rezept.',
 		importLinkBad: 'Eine öffentliche http(s)-Rezept-URL eingeben.',
@@ -707,7 +720,7 @@ const de: typeof en = {
 			'Rezept-Link einfügen und von Gemini aufräumen lassen, Mealie-ZIP/JSON hochladen, oder eine laufende Mealie-Instanz mit API-Token anzapfen.',
 		importLink: 'Per Link importieren',
 		importLinkHelp:
-			'Gemini liest die Seite und macht ein sauberes Basement-Rezept daraus — Zutaten, Mengen, Schritte und Nährwerte.',
+			'Gemini liest die Seite und macht ein sauberes Basement-Rezept daraus — Zutaten, Mengen, Schritte und Nährwerte. Nutzt deinen persönlichen Key aus den Einstellungen.',
 		importLinkUrl: 'Rezept-URL',
 		importLinkPlaceholder: 'https://…',
 		importLinkRun: 'Link lesen',
@@ -906,7 +919,18 @@ const de: typeof en = {
 		displayNameHelp: 'So sehen dich die anderen im Haushalt.',
 		save: 'Speichern',
 		saving: 'Speichern…',
-		saved: 'Gespeichert.'
+		saved: 'Gespeichert.',
+		gemini: 'Gemini',
+		geminiHelp:
+			'Dein eigener Gemini-API-Key für Link-Import und den Meal-Prep-Chat. Er bleibt an deinem Konto — der Rest vom Haus sieht und nutzt ihn nicht.',
+		geminiKey: 'API-Key',
+		geminiPlaceholder: 'AIza…',
+		geminiSave: 'Key speichern',
+		geminiClear: 'Key entfernen',
+		geminiSaved: 'Gemini-Key gespeichert.',
+		geminiCleared: 'Gemini-Key entfernt.',
+		geminiHint: 'Gespeicherter Key endet auf {hint}',
+		geminiOpen: 'Gemini-Key unter Einstellungen hinterlegen'
 	},
 	invite: {
 		title: 'Haushalt beitreten',

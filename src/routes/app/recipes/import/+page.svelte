@@ -208,9 +208,19 @@
 		<p class="mt-2 max-w-2xl text-fog">{t.recipes.importBody}</p>
 	</div>
 
+	{#if message}
+		<p class="text-sm text-mint">{message}</p>
+	{/if}
+	{#if error}
+		<p class="text-sm text-coral">{error}</p>
+	{/if}
+
 	<section class={[panelClass, 'space-y-4 p-5']}>
 		<h2 class="text-lg font-semibold">{t.recipes.importLink}</h2>
 		<p class="text-sm text-fog">{t.recipes.importLinkHelp}</p>
+		<p class="text-sm">
+			<a class="font-semibold text-gold" href={resolve('/app/settings')}>{t.settings.geminiOpen}</a>
+		</p>
 		<label class={labelClass}>
 			<span>{t.recipes.importLinkUrl}</span>
 			<input
@@ -303,11 +313,4 @@
 			</ul>
 		{/if}
 	</section>
-
-	{#if message}
-		<p class="text-sm text-mint">{message}</p>
-	{/if}
-	{#if error}
-		<p class="text-sm text-coral">{error}</p>
-	{/if}
 </div>

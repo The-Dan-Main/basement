@@ -121,6 +121,11 @@
 		<div>
 			<h1 class="text-3xl font-semibold tracking-tight">{t.recipes.chatHeading}</h1>
 			<p class="mt-2 max-w-2xl text-fog">{t.recipes.chatBody}</p>
+			<p class="mt-2 text-sm">
+				<a class="font-semibold text-gold" href={resolve('/app/settings')}
+					>{t.settings.geminiOpen}</a
+				>
+			</p>
 		</div>
 		<button class={btnGhost} type="button" onclick={reset}>{t.recipes.chatReset}</button>
 	</div>
@@ -156,7 +161,7 @@
 				{/if}
 			</div>
 			<form
-				class="mt-3 flex flex-col gap-2 sm:flex-row"
+				class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end"
 				onsubmit={(event) => {
 					event.preventDefault();
 					void send();
