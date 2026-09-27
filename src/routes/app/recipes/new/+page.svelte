@@ -78,6 +78,11 @@
 
 <div class="space-y-6">
 	<a class="text-sm text-gold" href={resolve('/app/recipes')}>{t.recipes.all}</a>
-	<h1 class="text-3xl font-semibold tracking-tight">{t.recipes.create}</h1>
+	<div class="flex flex-wrap items-end justify-between gap-3">
+		<h1 class="text-3xl font-semibold tracking-tight">{t.recipes.create}</h1>
+		<a class="text-sm font-semibold text-gold" href={resolve('/app/recipes/chat')}
+			>{t.recipes.newAi}</a
+		>
+	</div>
 	<RecipeForm {saving} {error} onsave={(value) => void save(value)} />
 </div>

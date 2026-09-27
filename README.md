@@ -8,6 +8,8 @@ Basement is an installable PWA: dark, shared with the household, and built to ke
 
 - **Multiple lists** per household — groceries, hardware, whatever you dump on the way out
 - **Recipes** with ingredients, steps, a photo, and nutrition (calories, fat, protein, fiber)
+- **Gemini link import** — paste a public recipe URL; Gemini extracts clean ingredients, amounts, steps, and nutrition
+- **Gemini meal-prep chat** — talk through cravings and leftovers, then save a batch-cook recipe
 - **Mealie import** — zip/JSON exports or a live Mealie API token, including categories as cookbooks
 - **Cookbooks**, a **cook timeline**, star **ratings**, and **comments** on recipes and cookbooks
 - **Scale a recipe** by servings, then push the scaled ingredients onto a shopping list (merging amounts when the item is already there)
@@ -38,6 +40,8 @@ Fill `.env`:
 | `PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Anon / publishable key                                 |
 | `SUPABASE_SERVICE_SECRET_KEY`     | Service role (server-only; not required to run the UI) |
 | `SUPABASE_PROJECT_ID`             | Used by `npm run gen-types`                            |
+| `GEMINI_API_KEY`                  | Server-only key for link import and the meal-prep chat |
+| `GEMINI_MODEL`                    | Optional. Defaults to `gemini-2.5-flash`               |
 
 In the [Supabase dashboard](https://supabase.com/dashboard):
 

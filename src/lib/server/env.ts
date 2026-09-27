@@ -14,3 +14,14 @@ export function isSupabaseConfigured() {
 	const { url, publishableKey } = getSupabaseConfig();
 	return url.startsWith('http') && publishableKey.length > 20;
 }
+
+export function getGeminiConfig() {
+	return {
+		apiKey: privateEnv.GEMINI_API_KEY?.trim() ?? '',
+		model: privateEnv.GEMINI_MODEL?.trim() || 'gemini-2.5-flash'
+	};
+}
+
+export function isGeminiConfigured() {
+	return getGeminiConfig().apiKey.length > 20;
+}

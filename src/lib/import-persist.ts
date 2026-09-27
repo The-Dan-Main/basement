@@ -20,6 +20,7 @@ export type ImportReport = {
 	skipped: number;
 	failed: number;
 	titles: string[];
+	ids: string[];
 };
 
 function cookbookByTitle(snap: OfflineSnapshot, householdId: string, title: string) {
@@ -40,9 +41,17 @@ export async function persistMealieDrafts(
 	userId: string,
 	householdId: string,
 	drafts: MealieRecipeDraft[],
-	replace = false
+	replace = false,
+	source = 'mealie'
 ): Promise<ImportReport> {
-	const report: ImportReport = { imported: 0, updated: 0, skipped: 0, failed: 0, titles: [] };
+	const report: ImportReport = {
+		imported: 0,
+		updated: 0,
+		skipped: 0,
+		failed: 0,
+		titles: [],
+		ids: []
+	};
 
 	for (const draft of drafts) {
 		try {
@@ -56,7 +65,7 @@ export async function persistMealieDrafts(
 			const existing = snap.recipes.find(
 				(row) =>
 					row.household_id === householdId &&
-					row.source === 'mealie' &&
+					row.source === source &&
 					row.source_key === draft.sourceKey
 			);
 			if (existing && !replace) {
@@ -84,7 +93,7 @@ export async function persistMealieDrafts(
 				fat_g: draft.fat_g,
 				protein_g: draft.protein_g,
 				fiber_g: draft.fiber_g,
-				source: 'mealie',
+				source,
 				sourceKey: draft.sourceKey,
 				ingredients: draft.ingredients,
 				steps: draft.steps,
@@ -155,6 +164,7 @@ export async function persistMealieDrafts(
 			if (existing) report.updated += 1;
 			else report.imported += 1;
 			report.titles.push(draft.title);
+			report.ids.push(id);
 		} catch {
 			report.failed += 1;
 		}
