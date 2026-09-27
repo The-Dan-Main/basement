@@ -1,5 +1,7 @@
-import { getGeminiConfig, isGeminiConfigured } from '$lib/server/env';
+import { env as privateEnv } from '$env/dynamic/private';
+import { isGeminiKey } from '$lib/ai-key';
 import { stripJsonFences } from '$lib/ai-recipe';
+import type { BasementClient } from '$lib/supabase/client';
 
 export class GeminiError extends Error {
 	status: number;
@@ -21,20 +23,33 @@ export type GeminiTurn = {
 	parts: { text: string }[];
 };
 
-export { isGeminiConfigured };
+export function getGeminiModel() {
+	return privateEnv.GEMINI_MODEL?.trim() || 'gemini-2.5-flash';
+}
+
+export async function loadUserGeminiKey(supabase: BasementClient, userId: string) {
+	const { data } = await supabase
+		.from('user_ai_keys')
+		.select('gemini_api_key')
+		.eq('user_id', userId)
+		.maybeSingle();
+	const key = data?.gemini_api_key?.trim() ?? '';
+	return isGeminiKey(key) ? key : '';
+}
 
 export async function generateGeminiJson(options: {
+	apiKey: string;
 	system: string;
 	user: string;
 	history?: GeminiTurn[];
 	schema: Record<string, unknown>;
 	temperature?: number;
 }): Promise<unknown> {
-	const { apiKey, model } = getGeminiConfig();
-	if (!apiKey) throw new GeminiError('missing-key', 503);
+	const apiKey = options.apiKey.trim();
+	if (!isGeminiKey(apiKey)) throw new GeminiError('missing-key', 503);
 
 	const response = await fetch(
-		`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+		`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(getGeminiModel())}:generateContent`,
 		{
 			method: 'POST',
 			headers: {

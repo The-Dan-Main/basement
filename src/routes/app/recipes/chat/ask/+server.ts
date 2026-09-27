@@ -9,7 +9,7 @@ import {
 import {
 	GeminiError,
 	generateGeminiJson,
-	isGeminiConfigured,
+	loadUserGeminiKey,
 	type GeminiTurn
 } from '$lib/server/gemini';
 import type { RequestHandler } from './$types';
@@ -42,8 +42,9 @@ When you write the recipe:
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const { user } = await locals.safeGetSession();
-	if (!user) error(401);
-	if (!isGeminiConfigured()) error(503, 'gemini-missing');
+	if (!user || !locals.supabase) error(401);
+	const apiKey = await loadUserGeminiKey(locals.supabase, user.id);
+	if (!apiKey) error(503, 'gemini-missing');
 
 	const body = asRecord(await request.json().catch(() => null)) ?? {};
 	const locale = body.locale === 'de' ? 'de' : 'en';
@@ -60,6 +61,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		const parsed = normalizeChatReply(
 			await generateGeminiJson({
+				apiKey,
 				system: SYSTEM,
 				schema: AI_CHAT_SCHEMA as unknown as Record<string, unknown>,
 				temperature: 0.6,
