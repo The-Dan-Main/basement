@@ -40,7 +40,10 @@ Fill `.env`:
 | `PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Anon / publishable key                                 |
 | `SUPABASE_SERVICE_SECRET_KEY`     | Service role (server-only; not required to run the UI) |
 | `SUPABASE_PROJECT_ID`             | Used by `npm run gen-types`                            |
-| `GEMINI_MODEL`                    | Optional. Defaults to `gemini-2.5-flash`               |
+| `GEMINI_MODEL`                    | Optional. Defaults to `gemini-3.8-flash`               |
+| `PUBLIC_VAPID_PUBLIC_KEY`         | Web Push public key for noon shopping reminders        |
+| `VAPID_PRIVATE_KEY`               | Web Push private key (server-only)                     |
+| `PUSH_CRON_SECRET`                | Bearer secret for `POST /push/dispatch`                |
 
 In the [Supabase dashboard](https://supabase.com/dashboard):
 

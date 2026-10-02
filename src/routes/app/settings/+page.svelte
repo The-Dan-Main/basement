@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { fill } from '$lib/i18n/locales';
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
+	import PushReminders from '$lib/components/PushReminders.svelte';
 	import { getI18n } from '$lib/i18n/i18n.svelte';
 	import { publishProfile } from '$lib/offline/live.svelte';
 	import { btnGhost, btnPrimary, fieldClass, labelClass, panelClass } from '$lib/ui';
@@ -31,6 +32,12 @@
 		</div>
 		<LanguageSwitcher />
 	</div>
+
+	<PushReminders
+		vapidPublicKey={data.vapidPublicKey}
+		supabase={data.supabase}
+		userId={data.user?.id}
+	/>
 
 	<form
 		class={[panelClass, 'space-y-5 p-6']}

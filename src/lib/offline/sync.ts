@@ -81,6 +81,7 @@ export type OutboxPayload =
 	| { kind: 'listsReorder'; updates: OrderPatch[]; updated_at: string }
 	| { kind: 'itemsReorder'; updates: OrderPatch[]; updated_at: string }
 	| { kind: 'householdUpdate'; householdId: string; patch: Partial<Household> }
+	| { kind: 'profileCookPrefs'; userId: string; likes: string; avoids: string }
 	| { kind: 'recipeUpsert'; recipe: Recipe; ingredients: RecipeIngredient[]; steps: RecipeStep[] }
 	| { kind: 'recipeDelete'; recipeId: string; imagePath?: string }
 	| { kind: 'cookbookUpsert'; cookbook: Cookbook; recipeIds: string[] }
@@ -132,6 +133,16 @@ export function emptySnapshot(userId: string, profile: Profile): OfflineSnapshot
 function hydrateSnapshot(snap: OfflineSnapshot): OfflineSnapshot {
 	return {
 		...snap,
+		profile: {
+			...snap.profile,
+			cook_likes: snap.profile?.cook_likes ?? '',
+			cook_avoids: snap.profile?.cook_avoids ?? ''
+		},
+		members: (snap.members ?? []).map((member) => ({
+			...member,
+			cook_likes: member.cook_likes ?? '',
+			cook_avoids: member.cook_avoids ?? ''
+		})),
 		lists: snap.lists.map((list) => ({ ...list, emoji: list.emoji ?? '' })),
 		items: snap.items.map((item) => ({
 			...item,
@@ -187,6 +198,8 @@ async function mutateSnapshot(userId: string, update: (snap: OfflineSnapshot) =>
 			id: userId,
 			display_name: 'Shopper',
 			locale: 'en',
+			cook_likes: '',
+			cook_avoids: '',
 			created_at: nowIso(),
 			updated_at: nowIso()
 		});
@@ -285,6 +298,8 @@ function applyOutbox(snap: OfflineSnapshot, payloads: OutboxPayload[]): OfflineS
 					household.id === payload.householdId ? { ...household, ...payload.patch } : household
 				)
 			};
+		} else if (payload.kind === 'profileCookPrefs') {
+			next = applyProfileCook(next, payload.userId, payload.likes, payload.avoids);
 		} else if (payload.kind === 'recipeUpsert') {
 			next = applyRecipeBundle(next, payload.recipe, payload.ingredients, payload.steps);
 		} else if (payload.kind === 'recipeDelete') {
@@ -681,21 +696,31 @@ export async function pullSnapshot(
 		recipes.map((row) => row.image_path)
 	);
 
-	const names = new Map(profileRows.map((row) => [row.id, row.display_name]));
-	const members: Member[] = memberRows.map((row) => ({
-		...row,
-		display_name: names.get(row.user_id) ?? 'Shopper'
-	}));
+	const profilesById = new Map(profileRows.map((row) => [row.id, row]));
+	const members: Member[] = memberRows.map((row) => {
+		const person = profilesById.get(row.user_id);
+		return {
+			...row,
+			display_name: person?.display_name ?? 'Shopper',
+			cook_likes: person?.cook_likes ?? '',
+			cook_avoids: person?.cook_avoids ?? ''
+		};
+	});
 
 	const next: OfflineSnapshot = hydrateSnapshot({
 		userId,
 		savedAt: nowIso(),
 		profile: {
 			locale: 'en',
+			cook_likes: '',
+			cook_avoids: '',
 			...(profileRow.data ??
 				profile ?? {
 					id: userId,
 					display_name: 'Shopper',
+					locale: 'en',
+					cook_likes: '',
+					cook_avoids: '',
 					created_at: nowIso(),
 					updated_at: nowIso()
 				})
@@ -814,11 +839,30 @@ async function pushPayload(supabase: BasementClient, payload: OutboxPayload) {
 	} else if (payload.kind === 'itemsReorder') {
 		await pushOrderPatches(supabase, 'list_items', payload.updates, payload.updated_at);
 	} else if (payload.kind === 'householdUpdate') {
+		const patch = { ...payload.patch } as Record<string, unknown>;
+		delete patch.cook_likes;
+		delete patch.cook_avoids;
 		const { error } = await supabase
 			.from('households')
-			.update(payload.patch)
+			.update(patch as Partial<Household>)
 			.eq('id', payload.householdId);
 		if (error) throw error;
+	} else if (payload.kind === 'profileCookPrefs') {
+		let row: Record<string, string> = {
+			cook_likes: payload.likes,
+			cook_avoids: payload.avoids
+		};
+		for (let attempt = 0; attempt < 3; attempt++) {
+			if (Object.keys(row).length === 0) return;
+			const { error } = await supabase.from('profiles').update(row).eq('id', payload.userId);
+			if (!error) return;
+			const drop = (['cook_likes', 'cook_avoids'] as const).find(
+				(column) => column in row && missingColumn(error, column)
+			);
+			if (!drop) throw error;
+			row = { ...row };
+			delete row[drop];
+		}
 	} else if (payload.kind === 'recipeUpsert') {
 		await writeRow((row) => supabase.from('recipes').upsert(row), toRecipeRow(payload.recipe), [
 			'is_public',
@@ -900,7 +944,10 @@ async function pushPayload(supabase: BasementClient, payload: OutboxPayload) {
 		const { error } = await supabase.from('chore_completions').insert(payload.completion);
 		if (error) throw error;
 	} else if (payload.kind === 'choreUncomplete') {
-		const { error } = await supabase.from('chore_completions').delete().eq('id', payload.completionId);
+		const { error } = await supabase
+			.from('chore_completions')
+			.delete()
+			.eq('id', payload.completionId);
 		if (error) throw error;
 	} else if (payload.kind === 'mealPlanUpsert') {
 		const { error } = await supabase.from('meal_plan_entries').upsert(payload.entry);
@@ -1138,6 +1185,29 @@ export async function persistHouseholdUpdate(
 	await pushOrQueue(supabase, { kind: 'householdUpdate', householdId, patch: stamped });
 }
 
+function applyProfileCook(snap: OfflineSnapshot, userId: string, likes: string, avoids: string) {
+	return {
+		...snap,
+		profile:
+			snap.profile.id === userId
+				? { ...snap.profile, cook_likes: likes, cook_avoids: avoids }
+				: snap.profile,
+		members: snap.members.map((member) =>
+			member.user_id === userId ? { ...member, cook_likes: likes, cook_avoids: avoids } : member
+		)
+	};
+}
+
+export async function persistProfileCookPrefs(
+	supabase: BasementClient,
+	userId: string,
+	likes: string,
+	avoids: string
+) {
+	await mutateSnapshot(userId, (snap) => applyProfileCook(snap, userId, likes, avoids));
+	await pushOrQueue(supabase, { kind: 'profileCookPrefs', userId, likes, avoids });
+}
+
 export async function persistRecipeUpsert(
 	supabase: BasementClient,
 	userId: string,
@@ -1264,7 +1334,11 @@ export async function persistChoreUpsert(supabase: BasementClient, userId: strin
 	await pushOrQueue(supabase, { kind: 'choreUpsert', chore });
 }
 
-export async function persistChoreDelete(supabase: BasementClient, userId: string, choreId: string) {
+export async function persistChoreDelete(
+	supabase: BasementClient,
+	userId: string,
+	choreId: string
+) {
 	await mutateSnapshot(userId, (snap) => removeChoreFromSnap(snap, choreId));
 	await pushOrQueue(supabase, { kind: 'choreDelete', choreId });
 }
@@ -1325,7 +1399,9 @@ export async function persistRecipeShare(
 	};
 	await mutateSnapshot(userId, (snap) => ({
 		...snap,
-		recipes: snap.recipes.map((recipe) => (recipe.id === recipeId ? { ...recipe, ...patch } : recipe))
+		recipes: snap.recipes.map((recipe) =>
+			recipe.id === recipeId ? { ...recipe, ...patch } : recipe
+		)
 	}));
 	await pushOrQueue(supabase, { kind: 'recipePatch', recipeId, patch });
 }
@@ -1355,6 +1431,8 @@ export async function persistRecipeToList(
 			id: userId,
 			display_name: 'Shopper',
 			locale: 'en',
+			cook_likes: '',
+			cook_avoids: '',
 			created_at: nowIso(),
 			updated_at: nowIso()
 		});
@@ -1516,7 +1594,12 @@ export function recipeDetail(snap: OfflineSnapshot, recipeId: string) {
 	return { recipe, ingredients, steps, comments, publicComments, timeline, ratings, cookbooks };
 }
 
-export function mealPlanForRange(snap: OfflineSnapshot, householdId: string | undefined, start: string, end: string) {
+export function mealPlanForRange(
+	snap: OfflineSnapshot,
+	householdId: string | undefined,
+	start: string,
+	end: string
+) {
 	return snap.mealPlan
 		.filter(
 			(row) =>

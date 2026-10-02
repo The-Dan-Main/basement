@@ -106,3 +106,58 @@ self.addEventListener('fetch', (event) => {
 		})()
 	);
 });
+
+type PushPayload = {
+	title?: string;
+	body?: string;
+	url?: string;
+	count?: number;
+};
+
+self.addEventListener('push', (event) => {
+	event.waitUntil(
+		(async () => {
+			let payload: PushPayload;
+			try {
+				payload = (event.data?.json() as PushPayload | undefined) ?? {};
+			} catch {
+				payload = {};
+			}
+			const title = payload.title || 'Basement';
+			const target = payload.url || '/app/lists';
+			await self.registration.showNotification(title, {
+				body: payload.body || '',
+				icon: '/icons/icon-192.png',
+				badge: '/icons/icon-192.png',
+				tag: 'shopping-noon',
+				data: { url: target }
+			});
+			const badge = navigator as Navigator & {
+				setAppBadge?: (contents?: number) => Promise<void>;
+			};
+			if (typeof payload.count === 'number' && badge.setAppBadge) {
+				await badge.setAppBadge(payload.count).catch(() => undefined);
+			}
+		})()
+	);
+});
+
+self.addEventListener('notificationclick', (event) => {
+	event.notification.close();
+	const path = (event.notification.data as { url?: string } | undefined)?.url || '/app/lists';
+	const target = new URL(path, self.location.origin).href;
+	event.waitUntil(
+		(async () => {
+			const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+			for (const client of windows) {
+				if (new URL(client.url).origin !== self.location.origin) continue;
+				const opener = client as WindowClient & {
+					navigate?: (url: string) => Promise<WindowClient | null>;
+				};
+				if (opener.navigate) await opener.navigate(target);
+				return client.focus();
+			}
+			await self.clients.openWindow(target);
+		})()
+	);
+});

@@ -5,6 +5,8 @@
 	import RecipeSubnav from '$lib/components/RecipeSubnav.svelte';
 	import type { AiRecipeDraft } from '$lib/ai-recipe';
 	import { aiDraftToMealie, imageFromPayload } from '$lib/ai-recipe-persist';
+	import CookPrefsForm from '$lib/components/CookPrefsForm.svelte';
+	import { selfCookPrefs } from '$lib/cook-prefs';
 	import { persistMealieDrafts } from '$lib/import-persist';
 	import { getI18n } from '$lib/i18n/i18n.svelte';
 	import { fill } from '$lib/i18n/locales';
@@ -22,6 +24,11 @@
 	const t = $derived(i18n.t);
 	const snap = $derived(resolveSnapshot(data.snap) ?? data.snap);
 	const household = $derived(snap.households[0] ?? null);
+	const members = $derived(
+		household ? snap.members.filter((member) => member.household_id === household.id) : []
+	);
+	let picked = $state<string[] | null>(null);
+	const audience = $derived(picked ?? (data.user?.id ? [data.user.id] : []));
 
 	let files = $state<File[]>([]);
 	let replace = $state(false);
@@ -114,10 +121,18 @@
 		message = '';
 		linkDraft = null;
 		try {
+			const prefs = selfCookPrefs(snap.profile);
 			const response = await fetch(resolve('/app/recipes/import/link'), {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ url, locale: i18n.locale })
+				body: JSON.stringify({
+					url,
+					locale: i18n.locale,
+					household_id: household?.id ?? '',
+					prefer_user_ids: audience,
+					cook_likes: prefs.likes,
+					cook_avoids: prefs.avoids
+				})
 			});
 			if (!response.ok) throw Object.assign(new Error('link'), { status: response.status });
 			const payload = (await response.json()) as {
@@ -221,6 +236,15 @@
 		<p class="text-sm">
 			<a class="font-semibold text-gold" href={resolve('/app/settings')}>{t.settings.geminiOpen}</a>
 		</p>
+		{#if data.user}
+			<CookPrefsForm
+				supabase={data.supabase}
+				userId={data.user.id}
+				profile={snap.profile}
+				{members}
+				bind:picked
+			/>
+		{/if}
 		<label class={labelClass}>
 			<span>{t.recipes.importLinkUrl}</span>
 			<input

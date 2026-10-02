@@ -230,7 +230,7 @@
 										🍽️
 									</div>
 								{/if}
-								<div class="min-w-0 flex-1 overflow-hidden py-3 pr-3">
+								<div class="min-w-0 flex-1 overflow-hidden p-3">
 									<p class="truncate font-semibold">{recipe.title}</p>
 									<p class="truncate text-xs text-fog">
 										{#if recipe.calories}{formatNutrition(per.calories)} {t.recipes.kcal}{/if}

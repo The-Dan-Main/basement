@@ -9,6 +9,7 @@ import {
 	parsePublicHttpUrl,
 	recipeLooksReady,
 	sanitizeChatTurns,
+	cookPreferencePrompt,
 	slugFromTitle,
 	sourceKeyFromUrl,
 	stripJsonFences
@@ -27,6 +28,26 @@ assert.equal(parsePublicHttpUrl('file:///etc/passwd'), null);
 
 assert.equal(sourceKeyFromUrl('https://Example.com/Pasta/'), 'example.com/pasta');
 assert.equal(slugFromTitle('Cremige Chicken-Pasta!'), 'cremige-chicken-pasta');
+assert.equal(cookPreferencePrompt([], 'chat'), '');
+assert.equal(cookPreferencePrompt([{ name: 'Ada', likes: '  ', avoids: '' }], 'chat'), '');
+assert.match(
+	cookPreferencePrompt(
+		[
+			{ name: 'Ada', likes: 'spicy', avoids: 'no cilantro' },
+			{ name: 'Ben', likes: '', avoids: 'no pork' }
+		],
+		'chat'
+	),
+	/Ada:\nDo:\nspicy/
+);
+assert.match(
+	cookPreferencePrompt([{ name: 'Ada', likes: 'spicy', avoids: 'no cilantro' }], 'chat'),
+	/Don't:\nno cilantro/
+);
+assert.match(
+	cookPreferencePrompt([{ name: 'Ada', likes: 'spicy', avoids: '' }], 'extract'),
+	/Keep the dish/
+);
 
 const messy = normalizeAiRecipe({
 	recipe_name: '  Tomato soup ',

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import CookPrefsForm from '$lib/components/CookPrefsForm.svelte';
 	import RecipeDraftCard from '$lib/components/RecipeDraftCard.svelte';
 	import RecipeSubnav from '$lib/components/RecipeSubnav.svelte';
 	import {
@@ -12,15 +13,21 @@
 	} from '$lib/ai-recipe';
 	import { aiDraftToMealie } from '$lib/ai-recipe-persist';
 	import { persistMealieDrafts } from '$lib/import-persist';
+	import { selfCookPrefs } from '$lib/cook-prefs';
 	import { getI18n } from '$lib/i18n/i18n.svelte';
 	import { resolveSnapshot } from '$lib/offline/live.svelte';
-	import { btnGhost, btnPrimary, fieldClass } from '$lib/ui';
+	import { btnGhost, btnPrimary, fieldClass, panelClass } from '$lib/ui';
 
 	let { data } = $props();
 	const i18n = getI18n();
 	const t = $derived(i18n.t);
 	const snap = $derived(resolveSnapshot(data.snap) ?? data.snap);
 	const household = $derived(snap.households[0] ?? null);
+	const members = $derived(
+		household ? snap.members.filter((member) => member.household_id === household.id) : []
+	);
+	let picked = $state<string[] | null>(null);
+	const audience = $derived(picked ?? (data.user?.id ? [data.user.id] : []));
 
 	let messages = $state<ChatTurn[]>([]);
 	let input = $state('');
@@ -54,13 +61,18 @@
 		busy = true;
 		error = '';
 		try {
+			const prefs = selfCookPrefs(snap.profile);
 			const response = await fetch(resolve('/app/recipes/chat/ask'), {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({
 					locale: i18n.locale,
 					messages: next,
-					recipe: recipeLooksReady(recipe) ? recipe : null
+					recipe: recipeLooksReady(recipe) ? recipe : null,
+					household_id: household?.id ?? '',
+					prefer_user_ids: audience,
+					cook_likes: prefs.likes,
+					cook_avoids: prefs.avoids
 				})
 			});
 			if (!response.ok) throw Object.assign(new Error('chat'), { status: response.status });
@@ -129,6 +141,19 @@
 		</div>
 		<button class={btnGhost} type="button" onclick={reset}>{t.recipes.chatReset}</button>
 	</div>
+
+	{#if data.user}
+		<section class={[panelClass, 'space-y-4 p-6']}>
+			<h2 class="text-lg font-semibold">{t.household.cookPrefs}</h2>
+			<CookPrefsForm
+				supabase={data.supabase}
+				userId={data.user.id}
+				profile={snap.profile}
+				{members}
+				bind:picked
+			/>
+		</section>
+	{/if}
 
 	<div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
 		<section class="flex min-h-[28rem] flex-col">

@@ -1,6 +1,11 @@
 import { env as privateEnv } from '$env/dynamic/private';
 import { isGeminiKey } from '$lib/ai-key';
-import { stripJsonFences } from '$lib/ai-recipe';
+import {
+	clampCookNote,
+	cookPreferencePrompt,
+	stripJsonFences,
+	type CookPerson
+} from '$lib/ai-recipe';
 import type { BasementClient } from '$lib/supabase/client';
 
 export class GeminiError extends Error {
@@ -24,7 +29,90 @@ export type GeminiTurn = {
 };
 
 export function getGeminiModel() {
-	return privateEnv.GEMINI_MODEL?.trim() || 'gemini-2.5-flash';
+	return privateEnv.GEMINI_MODEL?.trim() || 'gemini-3.8-flash';
+}
+
+export async function loadCookNotes(
+	supabase: BasementClient,
+	userId: string,
+	householdId: string,
+	preferUserIds: string[]
+) {
+	const wanted = [...new Set(preferUserIds.filter((id) => id.trim()))].slice(0, 12);
+	const ids = wanted.length > 0 ? wanted : [userId];
+	let allowed = new Set<string>();
+
+	if (householdId) {
+		const { data: membership } = await supabase
+			.from('household_members')
+			.select('user_id')
+			.eq('household_id', householdId)
+			.eq('user_id', userId)
+			.maybeSingle();
+		if (membership) {
+			const { data: mates } = await supabase
+				.from('household_members')
+				.select('user_id')
+				.eq('household_id', householdId)
+				.in('user_id', ids);
+			allowed = new Set((mates ?? []).map((row) => row.user_id));
+		}
+	}
+	if (ids.includes(userId)) allowed.add(userId);
+	if (allowed.size === 0) return [];
+
+	const { data, error } = await supabase
+		.from('profiles')
+		.select('id, display_name, cook_likes, cook_avoids')
+		.in('id', [...allowed]);
+	if (error || !data) return [];
+
+	const byId = new Map(data.map((row) => [row.id, row]));
+	return ids
+		.filter((id) => allowed.has(id))
+		.map((id) => {
+			const row = byId.get(id);
+			return {
+				id,
+				name: row?.display_name?.trim() || '',
+				likes: row?.cook_likes ?? '',
+				avoids: row?.cook_avoids ?? ''
+			};
+		});
+}
+
+export async function cookPreferenceBlock(
+	supabase: BasementClient,
+	userId: string,
+	body: Record<string, unknown>,
+	kind: 'chat' | 'extract'
+) {
+	const prefer = Array.isArray(body.prefer_user_ids)
+		? body.prefer_user_ids.filter((id): id is string => typeof id === 'string')
+		: [];
+	const householdId = typeof body.household_id === 'string' ? body.household_id : '';
+	const stored = await loadCookNotes(supabase, userId, householdId, prefer);
+	const fallbackLikes = clampCookNote(body.cook_likes);
+	const fallbackAvoids = clampCookNote(body.cook_avoids);
+	const includeSelf = prefer.length === 0 || prefer.includes(userId);
+	let people: CookPerson[];
+	if (stored.length === 0) {
+		people =
+			includeSelf && (fallbackLikes || fallbackAvoids)
+				? [{ name: '', likes: fallbackLikes, avoids: fallbackAvoids }]
+				: [];
+	} else {
+		people = stored.map((person) =>
+			person.id === userId
+				? {
+						name: person.name,
+						likes: person.likes || fallbackLikes,
+						avoids: person.avoids || fallbackAvoids
+					}
+				: { name: person.name, likes: person.likes, avoids: person.avoids }
+		);
+	}
+	return cookPreferencePrompt(people, kind);
 }
 
 export async function loadUserGeminiKey(supabase: BasementClient, userId: string) {

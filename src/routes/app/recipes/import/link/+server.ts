@@ -8,7 +8,12 @@ import {
 	sourceKeyFromUrl
 } from '$lib/ai-recipe';
 import { fetchPublicImage, fetchPublicPage, PageFetchError } from '$lib/server/fetch-page';
-import { GeminiError, generateGeminiJson, loadUserGeminiKey } from '$lib/server/gemini';
+import {
+	GeminiError,
+	cookPreferenceBlock,
+	generateGeminiJson,
+	loadUserGeminiKey
+} from '$lib/server/gemini';
 import type { RequestHandler } from './$types';
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -45,11 +50,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const page = await fetchPublicPage(url.toString());
 		const extracted = extractRecipePage(page.html);
 		if (!extracted.text && extracted.jsonLd.length === 0) error(422, 'no-recipe');
+		const preferences = await cookPreferenceBlock(locals.supabase, user.id, body, 'extract');
 
 		const parsed = normalizeAiRecipe(
 			await generateGeminiJson({
 				apiKey,
-				system: SYSTEM,
+				system: preferences ? `${SYSTEM}\n\n${preferences}` : SYSTEM,
 				schema: AI_RECIPE_SCHEMA as unknown as Record<string, unknown>,
 				temperature: 0.15,
 				user: [

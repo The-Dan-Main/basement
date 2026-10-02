@@ -33,6 +33,8 @@ export type Member = {
 	user_id: string;
 	role: 'owner' | 'member';
 	display_name: string;
+	cook_likes: string;
+	cook_avoids: string;
 	created_at: string;
 };
 

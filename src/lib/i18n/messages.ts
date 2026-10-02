@@ -376,7 +376,17 @@ const en = {
 		createInvite: 'Create invite',
 		copy: 'Copy link',
 		copied: 'Copied',
-		revoke: 'Revoke'
+		revoke: 'Revoke',
+		cookPrefs: 'Your preferences',
+		cookPrefsHelp:
+			'Do’s and don’ts for you. Choose who is eating — only those notes go to the cook and the link import.',
+		cookFor: 'Who is eating?',
+		cookForYou: 'You',
+		cookLikes: 'Do',
+		cookLikesPlaceholder: 'Sheet pans, spicy, five portions, freezer-friendly…',
+		cookAvoids: "Don't",
+		cookAvoidsPlaceholder: 'No cilantro, no pork, keep it mild…',
+		cookPrefsSaved: 'Preferences saved.'
 	},
 	settings: {
 		title: 'Settings · Basement',
@@ -399,7 +409,20 @@ const en = {
 		geminiSaved: 'Gemini key saved.',
 		geminiCleared: 'Gemini key removed.',
 		geminiHint: 'Saved key ending in {hint}',
-		geminiOpen: 'Add your Gemini key in Settings'
+		geminiOpen: 'Add your Gemini key in Settings',
+		reminders: 'Noon reminder',
+		remindersHelp: 'Once a day at noon, if a shopping list still has items.',
+		remindersEnable: 'Turn on',
+		remindersDisable: 'Turn off',
+		remindersOn: 'This device gets a reminder at noon.',
+		remindersOff: 'Noon reminders are off on this device.',
+		remindersDenied: 'Notifications are blocked. Allow them for Basement in the system settings.',
+		remindersIos:
+			'On iPhone and iPad, add Basement to the Home Screen, then open it from the icon and turn this on.',
+		remindersUnsupported:
+			'This browser cannot show notifications yet. Install Basement and open it from the icon.',
+		remindersUnavailable: 'Reminders are not configured on the server.',
+		remindersFailed: 'Could not save the reminder. Stay online and try again.'
 	},
 	invite: {
 		title: 'Join household',
@@ -907,7 +930,17 @@ const de: typeof en = {
 		createInvite: 'Einladung erstellen',
 		copy: 'Link kopieren',
 		copied: 'Kopiert',
-		revoke: 'Zurückziehen'
+		revoke: 'Zurückziehen',
+		cookPrefs: 'Deine Vorlieben',
+		cookPrefsHelp:
+			'Do’s und Don’ts für dich. Wähle, wer mitisst — nur deren Notizen gehen an den Koch und den Link-Import.',
+		cookFor: 'Wer isst mit?',
+		cookForYou: 'Du',
+		cookLikes: 'Do',
+		cookLikesPlaceholder: 'Blech, scharf, fünf Portionen, einfrierbar…',
+		cookAvoids: "Don't",
+		cookAvoidsPlaceholder: 'Kein Koriander, kein Schwein, lieber mild…',
+		cookPrefsSaved: 'Vorlieben gespeichert.'
 	},
 	settings: {
 		title: 'Einstellungen · Basement',
@@ -930,7 +963,20 @@ const de: typeof en = {
 		geminiSaved: 'Gemini-Key gespeichert.',
 		geminiCleared: 'Gemini-Key entfernt.',
 		geminiHint: 'Gespeicherter Key endet auf {hint}',
-		geminiOpen: 'Gemini-Key unter Einstellungen hinterlegen'
+		geminiOpen: 'Gemini-Key unter Einstellungen hinterlegen',
+		reminders: 'Mittags-Erinnerung',
+		remindersHelp: 'Einmal am Tag um 12 Uhr, wenn auf einer Einkaufsliste noch etwas offen ist.',
+		remindersEnable: 'Einschalten',
+		remindersDisable: 'Ausschalten',
+		remindersOn: 'Dieses Gerät bekommt um 12 Uhr eine Erinnerung.',
+		remindersOff: 'Die Mittags-Erinnerung ist auf diesem Gerät aus.',
+		remindersDenied: 'Mitteilungen sind blockiert. Erlaube sie für Basement in den Systemeinstellungen.',
+		remindersIos:
+			'Auf iPhone und iPad Basement zum Home-Bildschirm hinzufügen, vom Icon öffnen und dann einschalten.',
+		remindersUnsupported:
+			'Dieser Browser kann noch keine Mitteilungen zeigen. Installiere Basement und öffne es vom Icon.',
+		remindersUnavailable: 'Erinnerungen sind auf dem Server nicht eingerichtet.',
+		remindersFailed: 'Die Erinnerung konnte nicht gespeichert werden. Online bleiben und nochmal versuchen.'
 	},
 	invite: {
 		title: 'Haushalt beitreten',

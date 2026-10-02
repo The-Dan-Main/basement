@@ -8,6 +8,7 @@ import {
 } from '$lib/ai-recipe';
 import {
 	GeminiError,
+	cookPreferenceBlock,
 	generateGeminiJson,
 	loadUserGeminiKey,
 	type GeminiTurn
@@ -57,12 +58,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		parts: [{ text: turn.content }]
 	}));
 	const draft = normalizeAiRecipe(body.recipe);
+	const preferences = await cookPreferenceBlock(locals.supabase, user.id, body, 'chat');
 
 	try {
 		const parsed = normalizeChatReply(
 			await generateGeminiJson({
 				apiKey,
-				system: SYSTEM,
+				system: preferences ? `${SYSTEM}\n\n${preferences}` : SYSTEM,
 				schema: AI_CHAT_SCHEMA as unknown as Record<string, unknown>,
 				temperature: 0.6,
 				history,

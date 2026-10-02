@@ -4,6 +4,8 @@ export type ProfileRow = {
 	id: string;
 	display_name: string;
 	locale: string;
+	cook_likes: string;
+	cook_avoids: string;
 	created_at: string;
 	updated_at: string;
 };
@@ -11,6 +13,18 @@ export type ProfileRow = {
 export type UserAiKeyRow = {
 	user_id: string;
 	gemini_api_key: string;
+	created_at: string;
+	updated_at: string;
+};
+
+export type PushSubscriptionRow = {
+	id: string;
+	user_id: string;
+	endpoint: string;
+	p256dh: string;
+	auth: string;
+	timezone: string;
+	last_reminded_on: string | null;
 	created_at: string;
 	updated_at: string;
 };
@@ -481,6 +495,21 @@ export interface Database {
 				UserAiKeyRow,
 				{ user_id: string; gemini_api_key?: string },
 				Partial<Omit<UserAiKeyRow, 'user_id'>>
+			>;
+			push_subscriptions: Table<
+				PushSubscriptionRow,
+				{
+					user_id: string;
+					endpoint: string;
+					p256dh: string;
+					auth: string;
+					id?: string;
+					timezone?: string;
+					last_reminded_on?: string | null;
+					created_at?: string;
+					updated_at?: string;
+				},
+				Partial<PushSubscriptionRow>
 			>;
 			site_content: Table<
 				SiteContentRow,

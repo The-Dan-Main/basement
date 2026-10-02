@@ -62,7 +62,7 @@ export const AI_RECIPE_SCHEMA = {
 				type: 'object',
 				properties: {
 					name: { type: 'string' },
-					amount: { type: ['number', 'null'] },
+					amount: { type: 'number', nullable: true },
 					unit: { type: 'string' },
 					note: { type: 'string' },
 					category: { type: 'string' }
@@ -378,6 +378,38 @@ export function extractRecipePage(html: string): PageExtract {
 		imageUrl: extractOgImage(html),
 		jsonLd: extractJsonLdRecipes(html)
 	};
+}
+
+const COOK_NOTE_LIMIT = 2000;
+
+export function clampCookNote(value: unknown) {
+	return typeof value === 'string' ? value.trim().slice(0, COOK_NOTE_LIMIT) : '';
+}
+
+export type CookPerson = {
+	name: string;
+	likes: string;
+	avoids: string;
+};
+
+export function cookPreferencePrompt(people: CookPerson[], kind: 'chat' | 'extract') {
+	const blocks = people
+		.map((person) => {
+			const dos = clampCookNote(person.likes);
+			const donts = clampCookNote(person.avoids);
+			if (!dos && !donts) return '';
+			const who = person.name.trim() || 'Someone';
+			return [`${who}:`, dos ? `Do:\n${dos}` : '', donts ? `Don't:\n${donts}` : '']
+				.filter(Boolean)
+				.join('\n');
+		})
+		.filter(Boolean);
+	if (blocks.length === 0) return '';
+	const intro =
+		kind === 'chat'
+			? 'Preferences of the people eating this meal. Follow every listed person unless the latest message explicitly overrides one, and mention that override. If two people conflict, choose a version both can eat or ask.'
+			: "Preferences of the people this import is for. Keep the dish from the page. If an ingredient conflicts with someone's don't, leave the original and add a short substitution in that ingredient's note.";
+	return [intro, ...blocks].join('\n\n');
 }
 
 export function stripJsonFences(text: string) {

@@ -6,7 +6,10 @@ export function getSupabaseConfig() {
 		url: publicEnv.PUBLIC_SUPABASE_URL?.trim() ?? '',
 		publishableKey: publicEnv.PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() ?? '',
 		serviceKey: privateEnv.SUPABASE_SERVICE_SECRET_KEY?.trim() ?? '',
-		baseUrl: publicEnv.PUBLIC_BASE_URL?.trim() || 'http://localhost:5173'
+		baseUrl: publicEnv.PUBLIC_BASE_URL?.trim() || 'http://localhost:5173',
+		vapidPublicKey: publicEnv.PUBLIC_VAPID_PUBLIC_KEY?.trim() ?? '',
+		vapidPrivateKey: privateEnv.VAPID_PRIVATE_KEY?.trim() ?? '',
+		pushCronSecret: privateEnv.PUSH_CRON_SECRET?.trim() ?? ''
 	};
 }
 

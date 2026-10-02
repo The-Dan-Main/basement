@@ -1,10 +1,12 @@
 import { fail } from '@sveltejs/kit';
 import { geminiKeyHint, isGeminiKey, normalizeGeminiKey } from '$lib/ai-key';
+import { getSupabaseConfig } from '$lib/server/env';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
+	const { vapidPublicKey } = getSupabaseConfig();
 	const { user } = await locals.safeGetSession();
-	if (!locals.supabase || !user) return { hasGeminiKey: false, geminiHint: '' };
+	if (!locals.supabase || !user) return { hasGeminiKey: false, geminiHint: '', vapidPublicKey };
 	const { data } = await locals.supabase
 		.from('user_ai_keys')
 		.select('gemini_api_key')
@@ -13,7 +15,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const key = data?.gemini_api_key?.trim() ?? '';
 	return {
 		hasGeminiKey: isGeminiKey(key),
-		geminiHint: geminiKeyHint(key)
+		geminiHint: geminiKeyHint(key),
+		vapidPublicKey
 	};
 };
 
